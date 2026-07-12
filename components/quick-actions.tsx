@@ -19,9 +19,8 @@ const actions = [
 
 export default function QuickActions({ onAction }: QuickActionsProps) {
   return (
-    <div className="border-t border-border px-6 py-4 bg-card">
-      <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase">Quick Actions</p>
-      <div className="flex flex-wrap gap-2">
+    <div className="px-4 pb-4 pt-2 bg-transparent relative z-10">
+      <div className="flex flex-wrap gap-2 justify-center max-w-3xl mx-auto">
         {actions.map(action => {
           const Icon = action.icon
           return (
@@ -29,14 +28,14 @@ export default function QuickActions({ onAction }: QuickActionsProps) {
               key={action.id}
               onClick={() => onAction(action.id)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium',
-                'bg-background border border-border text-foreground',
-                'hover:bg-muted/50 hover:border-primary/50 transition-all duration-200',
-                'group'
+                'flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-medium',
+                'bg-transparent border border-border/80 text-muted-foreground',
+                'hover:bg-foreground/5 hover:text-foreground hover:border-foreground/20 transition-all duration-200',
+                'group shadow-sm'
               )}
               title={action.description}
             >
-              <Icon className="w-4 h-4 group-hover:text-primary transition-colors" />
+              <Icon className="w-3.5 h-3.5 group-hover:text-foreground transition-colors" />
               <span>{action.label}</span>
             </button>
           )

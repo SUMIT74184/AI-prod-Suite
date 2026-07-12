@@ -32,7 +32,7 @@ export default function LandingPage() {
           {/* Research Assistant - Large Featured Card */}
           <Link 
             href="/modules/research-assistant"
-            className="group relative md:col-span-2 md:row-span-2 rounded-[2rem] bg-card border border-border p-8 overflow-hidden hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+            className="group relative md:col-span-2 md:row-span-2 rounded-[2rem] bg-card p-8 overflow-hidden transition-all duration-300 cartoon-paper animate-cartoon animation-delay-100"
           >
             <div className="absolute -top-12 -right-12 p-8 opacity-5 group-hover:opacity-10 transition-opacity duration-500 rotate-12">
               <Brain className="w-64 h-64" />
@@ -56,7 +56,7 @@ export default function LandingPage() {
           {/* Code Reviewer */}
           <Link 
             href="/modules/code-reviewer"
-            className="group rounded-[2rem] bg-card border border-border p-6 hover:border-blue-500/50 hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+            className="group rounded-[2rem] bg-card p-6 transition-all duration-300 flex flex-col justify-between cartoon-paper animate-cartoon animation-delay-300"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
@@ -73,7 +73,7 @@ export default function LandingPage() {
           {/* Prompt Playground */}
           <Link 
             href="/modules/prompt-playground"
-            className="group rounded-[2rem] bg-card border border-border p-6 hover:border-amber-500/50 hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+            className="group rounded-[2rem] bg-card p-6 transition-all duration-300 flex flex-col justify-between cartoon-paper animate-cartoon animation-delay-500"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
@@ -90,7 +90,7 @@ export default function LandingPage() {
           {/* Web Research Agent */}
           <Link 
             href="/modules/web-research-agent"
-            className="group md:col-span-2 rounded-[2rem] bg-card border border-border p-6 hover:border-emerald-500/50 hover:shadow-md transition-all duration-300 flex items-center justify-between"
+            className="group md:col-span-2 rounded-[2rem] bg-card p-6 transition-all duration-300 flex items-center justify-between cartoon-paper animate-cartoon animation-delay-700"
           >
             <div className="flex items-center gap-6">
               <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
@@ -107,7 +107,7 @@ export default function LandingPage() {
           {/* Workflow Automation */}
           <Link 
             href="/modules/workflow-automation"
-            className="group rounded-[2rem] bg-card border border-border p-6 hover:border-rose-500/50 hover:shadow-md transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
+            className="group rounded-[2rem] bg-card p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden cartoon-paper animate-cartoon animation-delay-100"
           >
             <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
               <Workflow className="w-32 h-32" />

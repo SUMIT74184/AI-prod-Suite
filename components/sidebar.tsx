@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -33,15 +33,45 @@ const modules = [
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const [conversations, setConversations] = useState<ConversationItem[]>([
-    { id: '1', title: 'Research on Machine Learning', module: 'research-assistant' },
-    { id: '2', title: 'Review: React useEffect Hook', module: 'code-reviewer' },
-    { id: '3', title: 'GPT Prompt Optimization', module: 'prompt-playground' },
-  ])
+  
+  // Temporary: Clerk disabled per user request
+  const userId = "demo-user"
+  
+  const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [isCollapsed, setIsCollapsed] = useState(false)
 
-  const deleteConversation = (id: string) => {
-    setConversations(conversations.filter(c => c.id !== id))
+  const fetchConversations = async () => {
+    if (!userId) return
+    try {
+      // In production this URL should be dynamic based on environment
+      const res = await fetch(`http://localhost:8000/api/py/conversations?user_id=${userId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setConversations(data)
+      }
+    } catch (e) {
+      console.error('Failed to fetch conversations:', e)
+    }
+  }
+
+  useEffect(() => {
+    fetchConversations()
+    
+    // Set up a custom event listener to refresh conversations when a new one is created
+    const handleRefresh = () => fetchConversations()
+    window.addEventListener('refresh-conversations', handleRefresh)
+    return () => window.removeEventListener('refresh-conversations', handleRefresh)
+  }, [userId])
+
+  const deleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      await fetch(`http://localhost:8000/api/py/ingest/${id}`, { method: 'DELETE' })
+      setConversations(conversations.filter(c => c.id !== id))
+    } catch (e) {
+      console.error('Failed to delete conversation:', e)
+    }
   }
 
   return (
@@ -116,21 +146,22 @@ export default function Sidebar() {
             </p>
             <div className="space-y-1">
               {conversations.map(conv => (
-                <div
+                <Link
                   key={conv.id}
+                  href={`/modules/${conv.module}?sessionId=${conv.id}`}
                   className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sidebar-accent/30 transition-colors"
                 >
                   <span className="flex-1 text-sm text-sidebar-foreground truncate">
                     {conv.title}
                   </span>
                   <button
-                    onClick={() => deleteConversation(conv.id)}
+                    onClick={(e) => deleteConversation(conv.id, e)}
                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
                     aria-label="Delete conversation"
                   >
                     <Trash2 className="w-3 h-3 text-red-500" />
                   </button>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

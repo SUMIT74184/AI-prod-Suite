@@ -47,9 +47,9 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(0.99 0.01 270);
+  --background: oklch(0.98 0.01 80);
   --foreground: oklch(0.15 0.02 270);
-  --card: oklch(1 0 0);
+  --card: oklch(0.99 0.005 80);
   --card-foreground: oklch(0.15 0.02 270);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.02 270);
@@ -83,9 +83,9 @@
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.15 0.02 270);
-  --foreground: oklch(0.98 0.01 270);
-  --card: oklch(0.18 0.02 270);
+  --background: oklch(0.18 0.01 270);
+  --foreground: oklch(0.98 0.01 80);
+  --card: oklch(0.20 0.01 270);
   --card-foreground: oklch(0.98 0.01 270);
   --popover: oklch(0.18 0.02 270);
   --popover-foreground: oklch(0.98 0.01 270);
@@ -119,9 +119,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
-    --background: oklch(0.15 0.02 270);
-    --foreground: oklch(0.98 0.01 270);
-    --card: oklch(0.18 0.02 270);
+    --background: oklch(0.18 0.01 270);
+    --foreground: oklch(0.98 0.01 80);
+    --card: oklch(0.20 0.01 270);
     --card-foreground: oklch(0.98 0.01 270);
     --popover: oklch(0.18 0.02 270);
     --popover-foreground: oklch(0.98 0.01 270);
@@ -160,4 +160,40 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Cartoon Paper Styles */
+@layer utilities {
+  .cartoon-paper {
+    border: 2px solid var(--color-foreground);
+    box-shadow: 6px 6px 0px rgba(0,0,0,0.85);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  }
+  .dark .cartoon-paper {
+    border: 2px solid var(--color-foreground);
+    box-shadow: 6px 6px 0px rgba(255,255,255,0.85);
+  }
+  .cartoon-paper:hover {
+    transform: translateY(-4px) rotate(-1deg);
+    box-shadow: 8px 8px 0px rgba(0,0,0,0.85);
+  }
+  .dark .cartoon-paper:hover {
+    box-shadow: 8px 8px 0px rgba(255,255,255,0.85);
+  }
+  
+  @keyframes float-wobble {
+    0% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-3px) rotate(1deg); }
+    66% { transform: translateY(2px) rotate(-0.5deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+  }
+  
+  .animate-cartoon {
+    animation: float-wobble 4s ease-in-out infinite;
+  }
+  
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+  .animation-delay-700 { animation-delay: 700ms; }
 }
