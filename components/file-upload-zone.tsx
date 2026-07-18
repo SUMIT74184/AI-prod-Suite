@@ -93,44 +93,44 @@ export default function FileUploadZone({
 
   const getFileIcon = (file: File) => {
     if (file.type === 'application/pdf') {
-      return <FileText className="w-4 h-4 text-red-500" />
+      return <FileText className="w-4 h-4 text-[#ff7a17]" />
     }
-    return <File className="w-4 h-4 text-blue-500" />
+    return <File className="w-4 h-4 text-[#a0c3ec]" />
   }
 
   const getStatusBadge = (tracked: TrackedFile) => {
     switch (tracked.status) {
       case 'uploading':
         return (
-          <span className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400">
+          <span className="flex items-center gap-1 text-xs text-[#ffc285]">
             <Loader2 className="w-3 h-3 animate-spin" />
             Uploading...
           </span>
         )
       case 'processing':
         return (
-          <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+          <span className="flex items-center gap-1 text-xs text-[#ff7a17]">
             <Loader2 className="w-3 h-3 animate-spin" />
             Processing chunks...
           </span>
         )
       case 'indexed':
         return (
-          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+          <span className="flex items-center gap-1 text-xs text-white">
             <CheckCircle2 className="w-3 h-3" />
             Indexed ({tracked.chunkCount} chunks)
           </span>
         )
       case 'error':
         return (
-          <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+          <span className="flex items-center gap-1 text-xs text-[#ff4444]">
             <AlertCircle className="w-3 h-3" />
             {tracked.error || 'Failed'}
           </span>
         )
       default:
         return (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-[#7d8187]">
             Pending
           </span>
         )
@@ -149,11 +149,11 @@ export default function FileUploadZone({
         onDragLeave={handleDragLeave}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'border border-dashed rounded-2xl p-4 transition-all duration-200 cursor-pointer',
+          'border border-dashed rounded-lg p-4 transition-all duration-200 cursor-pointer',
           'flex flex-col items-center justify-center gap-2',
           isDragging
-            ? 'border-foreground bg-foreground/5'
-            : 'border-border/60 hover:border-foreground/30 hover:bg-foreground/5 text-muted-foreground hover:text-foreground'
+            ? 'border-white bg-[rgba(255,255,255,0.05)]'
+            : 'border-[#212327] hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(255,255,255,0.02)] text-[#7d8187] hover:text-white'
         )}
       >
         <input
@@ -167,10 +167,10 @@ export default function FileUploadZone({
         />
         <Upload className="w-5 h-5 mb-1 opacity-70" />
         <div className="text-center">
-          <p className="text-[13px] font-medium text-foreground/90">
+          <p className="text-sm font-normal text-inherit">
             {isDragging ? 'Drop files here' : 'Drag and drop or click to upload'}
           </p>
-          <p className="text-[11px] text-muted-foreground/70 mt-1 uppercase tracking-wider font-semibold">
+          <p className="xai-caption-mono-sm text-[#7d8187] mt-1.5">
             PDF, DOCX, TXT (MAX 50MB)
           </p>
         </div>
@@ -178,7 +178,7 @@ export default function FileUploadZone({
 
       {/* Error Message */}
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
+        <div className="text-sm text-[#ff4444] bg-[rgba(255,68,68,0.1)] px-3 py-2 rounded-lg border border-[rgba(255,68,68,0.2)]">
           {error}
         </div>
       )}
@@ -186,20 +186,20 @@ export default function FileUploadZone({
       {/* Uploaded Files List with Status */}
       {displayFiles.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">
+          <p className="xai-caption-mono-sm text-[#7d8187]">
             Ingested Sources
           </p>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {displayFiles.map((tracked, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2 bg-background border border-border rounded-lg"
+                className="flex items-center justify-between p-2.5 bg-[#191919] border border-[#212327] rounded-lg"
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {getFileIcon(tracked.file)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{tracked.file.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-normal text-white truncate">{tracked.file.name}</p>
+                    <p className="text-xs text-[#7d8187]">
                       {(tracked.file.size / 1024).toFixed(2)} KB
                     </p>
                   </div>

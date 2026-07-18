@@ -75,11 +75,12 @@ export default function CodeReviewerPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="border-b border-border p-4 flex items-center justify-between">
+    <div className="flex flex-col h-full bg-[#0a0a0a]">
+      <div className="border-b border-[#212327] p-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">AI Code Reviewer</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="xai-caption-mono-sm text-[#7d8187] mb-1">Code</p>
+          <h1 className="xai-display-xs text-white">AI Code Reviewer</h1>
+          <p className="text-sm text-[#7d8187] mt-1 font-normal">
             Get AI-powered feedback on your code for bugs, security, and improvements
           </p>
         </div>
@@ -92,7 +93,7 @@ export default function CodeReviewerPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-muted/50 px-4 h-12">
+        <TabsList className="w-full justify-start rounded-none border-b border-[#212327] bg-[#0a0a0a] px-4 h-12">
           <TabsTrigger value="input">Input Code</TabsTrigger>
           <TabsTrigger value="results" disabled={!reviewResult}>
             Review Results
@@ -104,7 +105,7 @@ export default function CodeReviewerPage() {
             {/* Code Input Section */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-foreground">Paste Your Code</label>
+                <label className="text-sm font-normal text-white">Paste Your Code</label>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -120,16 +121,16 @@ export default function CodeReviewerPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Paste your code here... (JavaScript, Python, TypeScript, etc.)"
-                className="flex-1 p-3 rounded-lg border border-border bg-background text-foreground font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 p-3 rounded-lg border border-[#212327] bg-[#1a1c20] text-white font-mono text-sm resize-none focus:outline-none focus:border-[rgba(255,255,255,0.25)] placeholder-[#7d8187] font-normal transition-colors"
               />
-              <div className="text-xs text-muted-foreground">
+              <div className="xai-caption-mono-sm text-[#7d8187]">
                 {code.length} characters
               </div>
             </div>
 
             {/* File Upload Section */}
             <div className="flex flex-col gap-3">
-              <label className="text-sm font-semibold text-foreground">Or Upload Files</label>
+              <label className="text-sm font-normal text-white">Or Upload Files</label>
               <div className="flex-1">
                 <FileUploadZone
                   onFilesSelected={handleFilesSelected}
@@ -138,10 +139,10 @@ export default function CodeReviewerPage() {
               </div>
               {uploadedFiles && uploadedFiles.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-foreground">Selected Files:</p>
+                  <p className="xai-caption-mono-sm text-[#7d8187]">Selected Files:</p>
                   <div className="space-y-1">
                     {uploadedFiles.map((file: File, idx: number) => (
-                      <div key={idx} className="text-xs text-muted-foreground bg-muted rounded px-2 py-1">
+                      <div key={idx} className="text-xs text-[#7d8187] bg-[#191919] border border-[#212327] rounded-lg px-3 py-1.5">
                         {file.name}
                       </div>
                     ))}
@@ -151,7 +152,7 @@ export default function CodeReviewerPage() {
             </div>
           </div>
 
-          <div className="flex gap-2 mt-4 border-t border-border pt-4">
+          <div className="flex gap-2 mt-4 border-t border-[#212327] pt-4">
             <Button
               onClick={handleReview}
               disabled={isLoading || !code.trim()}
@@ -172,7 +173,7 @@ export default function CodeReviewerPage() {
         <TabsContent value="results" className="flex-1 overflow-auto p-4">
           {reviewResult && (
             <div className="space-y-4 max-w-4xl">
-              {/* Results using Tabs instead of Accordion */}
+              {/* Results using Tabs */}
               <Tabs defaultValue="bugs" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="bugs" className="flex items-center gap-1">
@@ -196,74 +197,74 @@ export default function CodeReviewerPage() {
                 <TabsContent value="bugs" className="space-y-2 mt-4">
                   {reviewResult.bugs && reviewResult.bugs.length > 0 ? (
                     reviewResult.bugs.map((bug: string, idx: number) => (
-                      <div key={idx} className="bg-red-50 dark:bg-red-950/20 rounded p-3 border-l-4 border-red-600 text-sm">
-                        <p className="font-semibold text-red-900 dark:text-red-200">Bug {idx + 1}</p>
-                        <p className="text-red-800 dark:text-red-300 mt-1">{bug}</p>
+                      <div key={idx} className="bg-[#191919] rounded-lg p-3 border-l-2 border-[#ff4444] text-sm border border-[#212327]">
+                        <p className="font-normal text-[#ff4444]">Bug {idx + 1}</p>
+                        <p className="text-[#dadbdf] mt-1">{bug}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">No bugs detected! ✓</p>
+                    <p className="text-[#7d8187] text-center py-8">No bugs detected! ✓</p>
                   )}
                 </TabsContent>
 
                 <TabsContent value="security" className="space-y-2 mt-4">
                   {reviewResult.security && reviewResult.security.length > 0 ? (
                     reviewResult.security.map((issue: string, idx: number) => (
-                      <div key={idx} className="bg-yellow-50 dark:bg-yellow-950/20 rounded p-3 border-l-4 border-yellow-600 text-sm">
-                        <p className="font-semibold text-yellow-900 dark:text-yellow-200">Issue {idx + 1}</p>
-                        <p className="text-yellow-800 dark:text-yellow-300 mt-1">{issue}</p>
+                      <div key={idx} className="bg-[#191919] rounded-lg p-3 border-l-2 border-[#ffc285] text-sm border border-[#212327]">
+                        <p className="font-normal text-[#ffc285]">Issue {idx + 1}</p>
+                        <p className="text-[#dadbdf] mt-1">{issue}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">No security issues found! ✓</p>
+                    <p className="text-[#7d8187] text-center py-8">No security issues found! ✓</p>
                   )}
                 </TabsContent>
 
                 <TabsContent value="improvements" className="space-y-2 mt-4">
                   {reviewResult.improvements && reviewResult.improvements.length > 0 ? (
                     reviewResult.improvements.map((improvement: string, idx: number) => (
-                      <div key={idx} className="bg-blue-50 dark:bg-blue-950/20 rounded p-3 border-l-4 border-blue-600 text-sm">
-                        <p className="font-semibold text-blue-900 dark:text-blue-200">Suggestion {idx + 1}</p>
-                        <p className="text-blue-800 dark:text-blue-300 mt-1">{improvement}</p>
+                      <div key={idx} className="bg-[#191919] rounded-lg p-3 border-l-2 border-[#a0c3ec] text-sm border border-[#212327]">
+                        <p className="font-normal text-[#a0c3ec]">Suggestion {idx + 1}</p>
+                        <p className="text-[#dadbdf] mt-1">{improvement}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">No improvements suggested.</p>
+                    <p className="text-[#7d8187] text-center py-8">No improvements suggested.</p>
                   )}
                 </TabsContent>
 
                 <TabsContent value="details" className="space-y-4 mt-4">
-                  <div className="bg-green-50 dark:bg-green-950/20 rounded p-4 border-l-4 border-green-600">
-                    <p className="font-semibold text-green-900 dark:text-green-200 flex items-center gap-2">
+                  <div className="bg-[#191919] rounded-lg p-4 border-l-2 border-white border border-[#212327]">
+                    <p className="font-normal text-white flex items-center gap-2">
                       <BookOpen className="w-4 h-4" />
                       Explanation
                     </p>
-                    <p className="text-green-800 dark:text-green-300 mt-2 text-sm">{reviewResult.explanation}</p>
+                    <p className="text-[#dadbdf] mt-2 text-sm">{reviewResult.explanation}</p>
                   </div>
 
-                  <div className="bg-purple-50 dark:bg-purple-950/20 rounded p-4 border-l-4 border-purple-600">
-                    <p className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                  <div className="bg-[#191919] rounded-lg p-4 border-l-2 border-[#7c3aed] border border-[#212327]">
+                    <p className="font-normal text-[#c4b5fd] flex items-center gap-2">
                       <Zap className="w-4 h-4" />
                       Complexity Analysis
                     </p>
-                    <p className="text-purple-800 dark:text-purple-300 mt-2 text-sm whitespace-pre-wrap">{reviewResult.complexity}</p>
+                    <p className="text-[#dadbdf] mt-2 text-sm whitespace-pre-wrap">{reviewResult.complexity}</p>
                   </div>
 
-                  <div className="bg-cyan-50 dark:bg-cyan-950/20 rounded p-4 border-l-4 border-cyan-600">
-                    <p className="font-semibold text-cyan-900 dark:text-cyan-200 flex items-center gap-2">
+                  <div className="bg-[#191919] rounded-lg p-4 border-l-2 border-[#a0c3ec] border border-[#212327]">
+                    <p className="font-normal text-[#a0c3ec] flex items-center gap-2">
                       <TestTube className="w-4 h-4" />
                       Unit Tests
                     </p>
-                    <pre className="text-cyan-800 dark:text-cyan-300 mt-2 text-xs overflow-x-auto bg-black/10 p-2 rounded">{reviewResult.unitTests}</pre>
+                    <pre className="text-[#dadbdf] mt-2 text-xs overflow-x-auto bg-[#1a1c20] p-2 rounded-lg border border-[#212327] font-mono">{reviewResult.unitTests}</pre>
                   </div>
 
                   {reviewResult.refactoring && reviewResult.refactoring.length > 0 && (
-                    <div className="bg-orange-50 dark:bg-orange-950/20 rounded p-4 border-l-4 border-orange-600">
-                      <p className="font-semibold text-orange-900 dark:text-orange-200 flex items-center gap-2">
+                    <div className="bg-[#191919] rounded-lg p-4 border-l-2 border-[#ff7a17] border border-[#212327]">
+                      <p className="font-normal text-[#ff7a17] flex items-center gap-2">
                         <Wrench className="w-4 h-4" />
                         Refactoring Suggestions
                       </p>
-                      <ul className="text-orange-800 dark:text-orange-300 mt-2 text-sm space-y-1">
+                      <ul className="text-[#dadbdf] mt-2 text-sm space-y-1">
                         {reviewResult.refactoring.map((suggestion: string, idx: number) => (
                           <li key={idx}>• {suggestion}</li>
                         ))}
@@ -279,4 +280,3 @@ export default function CodeReviewerPage() {
     </div>
   )
 }
-

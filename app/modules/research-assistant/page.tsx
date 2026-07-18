@@ -337,13 +337,14 @@ export default function ResearchAssistantPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background">
+    <div className="flex-1 flex flex-col h-full bg-[#0a0a0a]">
       {/* Header */}
-      <div className="border-b border-border px-6 py-4">
+      <div className="border-b border-[#212327] px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">AI Research Assistant</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="xai-caption-mono-sm text-[#7d8187] mb-1">Research</p>
+            <h1 className="xai-display-xs text-white">AI Research Assistant</h1>
+            <p className="text-sm text-[#7d8187] mt-1 font-normal">
               Upload documents and analyze them with RAG-powered AI insights
             </p>
           </div>
@@ -351,15 +352,15 @@ export default function ResearchAssistantPage() {
           {/* Session Info Badge */}
           {sessionInfo?.has_data && (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full">
-                <Database className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                <span className="text-xs font-medium text-green-700 dark:text-green-300">
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(255,255,255,0.25)]">
+                <Database className="w-3.5 h-3.5 text-white" />
+                <span className="text-xs font-normal text-white">
                   {sessionInfo.total_chunks} chunks indexed
                 </span>
               </div>
               <button
                 onClick={handleClearSession}
-                className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded-md hover:bg-red-500/10"
+                className="p-1.5 text-[#7d8187] hover:text-[#ff4444] transition-colors rounded-full hover:bg-[rgba(255,68,68,0.1)]"
                 title="Clear all ingested data"
               >
                 <Trash2 className="w-4 h-4" />
@@ -387,10 +388,10 @@ export default function ResearchAssistantPage() {
         <div className="bg-transparent p-4 pb-8 relative z-10">
           <div className="max-w-3xl mx-auto space-y-4">
 
-            {/* Youtube URL Input (Subtle above chat) */}
+            {/* Youtube URL Input */}
             <div className="flex items-center justify-center">
-              <div className="flex items-center gap-2 max-w-md w-full bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-border shadow-sm hover:shadow transition-all focus-within:ring-2 focus-within:ring-primary/20">
-                <PlaySquare className="w-4 h-4 text-red-500/80 shrink-0" />
+              <div className="flex items-center gap-2 max-w-md w-full bg-[#191919] px-3 py-1.5 rounded-full border border-[#212327] hover:border-[rgba(255,255,255,0.25)] transition-all focus-within:border-[rgba(255,255,255,0.25)]">
+                <PlaySquare className="w-4 h-4 text-[#ff7a17] shrink-0" />
                 <input
                   type="text"
                   value={youtubeUrl}
@@ -399,15 +400,15 @@ export default function ResearchAssistantPage() {
                     if (youtubeStatus !== 'idle') setYoutubeStatus('idle')
                   }}
                   placeholder="Paste YouTube URL to ingest..."
-                  className="flex-1 bg-transparent text-xs text-foreground focus:outline-none placeholder-muted-foreground min-w-0"
+                  className="flex-1 bg-transparent text-xs text-white focus:outline-none placeholder-[#7d8187] min-w-0 font-normal"
                 />
                 {youtubeStatus === 'done' ? (
-                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
                 ) : (
                   <button
                     onClick={handleYoutubeIngest}
                     disabled={!youtubeUrl.trim() || youtubeStatus === 'ingesting'}
-                    className="text-[10px] uppercase tracking-wider font-semibold px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded hover:bg-red-500/20 disabled:opacity-50 transition-colors flex items-center shrink-0"
+                    className="xai-caption-mono-sm px-2 py-1 text-[#ff7a17] rounded-full hover:bg-[rgba(255,122,23,0.1)] disabled:opacity-50 transition-colors flex items-center shrink-0 text-[10px]"
                   >
                     {youtubeStatus === 'ingesting' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Ingest'}
                   </button>
@@ -450,7 +451,7 @@ function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative flex items-end w-full bg-card border border-border/80 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.1)] rounded-[24px] overflow-hidden focus-within:ring-1 focus-within:ring-foreground/20 focus-within:border-foreground/30 transition-all pl-4 pr-2 py-2"
+      className="relative flex items-end w-full bg-[#191919] border border-[#212327] rounded-full overflow-hidden focus-within:border-[rgba(255,255,255,0.25)] transition-all pl-4 pr-2 py-2"
     >
       <input
         type="text"
@@ -460,7 +461,7 @@ function ChatInput({
         onCompositionStart={() => setIsComposing(true)}
         onCompositionEnd={() => setIsComposing(false)}
         placeholder="How can I help you with this research?"
-        className="flex-1 bg-transparent text-foreground placeholder-muted-foreground focus:outline-none py-2 text-[15px] min-h-[44px]"
+        className="flex-1 bg-transparent text-white placeholder-[#7d8187] focus:outline-none py-2 text-[15px] font-normal min-h-[44px]"
       />
       <div className="flex items-center ml-2 mb-1">
         <button
@@ -469,8 +470,8 @@ function ChatInput({
           className={cn(
             "p-2 rounded-full flex items-center justify-center transition-all",
             input.trim() && !isSending
-              ? "bg-foreground text-background hover:opacity-90"
-              : "bg-muted text-muted-foreground"
+              ? "bg-white text-[#0a0a0a] hover:opacity-90"
+              : "bg-[#1a1c20] text-[#7d8187]"
           )}
         >
           {isSending ? (
