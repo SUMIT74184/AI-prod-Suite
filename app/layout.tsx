@@ -30,8 +30,6 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0a',
 }
 
-import { ClerkProvider } from '@clerk/nextjs'
-
 export default function RootLayout({
   children,
 }: Readonly<{

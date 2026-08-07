@@ -3,35 +3,54 @@ import { Brain, Code2, Lightbulb, Search, Workflow, ArrowRight } from 'lucide-re
 
 export default function LandingPage() {
   return (
-    <div 
-      className="min-h-screen text-white selection:bg-white/20"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(10, 10, 10, 0.82) 0%, rgba(10, 10, 10, 0.96) 100%), url('/ais.jpeg')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <div className="relative min-h-screen text-white selection:bg-white/20">
+
+      {/* Background video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover z-0"
+        style={{ pointerEvents: 'none' }}
+      >
+        <source src="/no_watermakr_space.mp4" type="video/mp4" />
+      </video>
+
+      {/* Dark overlay for text readability */}
+      <div
+        className="fixed inset-0 z-[1]"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(10, 10, 10, 0.78) 0%, rgba(10, 10, 10, 0.92) 60%, rgba(10, 10, 10, 0.97) 100%)',
+        }}
+      />
 
       {/* Nav bar */}
-      <nav className="border-b border-[#212327] px-6 py-3">
+      <nav className="relative z-[2] border-b border-[#212327] px-6 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Brain className="w-5 h-5 text-white" />
             <span className="text-[15px] font-normal tracking-tight">AI Suite</span>
           </div>
-          <Link
-            href="/modules/research-assistant"
-            className="xai-btn-outline inline-flex items-center gap-2 px-4 py-1.5"
-          >
-            Open App
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/sign-in"
+              className="xai-btn-outline inline-flex items-center gap-2 px-4 py-1.5"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/sign-up"
+              className="xai-btn-primary inline-flex items-center gap-2 px-4 py-1.5"
+            >
+              Get Started
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-6 py-16 md:py-24">
+      <main className="relative z-[2] max-w-5xl mx-auto px-6 py-16 md:py-24">
         
         {/* Hero section */}
         <header className="mb-20 md:mb-28">
@@ -148,7 +167,7 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#212327] px-6 py-8">
+      <footer className="relative z-[2] border-t border-[#212327] px-6 py-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <p className="xai-body-sm text-[#7d8187]">AI Productivity Suite</p>
           <p className="xai-caption-mono-sm text-[#7d8187]">Built with precision</p>

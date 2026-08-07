@@ -320,4 +320,109 @@
   .xai-delay-3 { animation-delay: 300ms; }
   .xai-delay-4 { animation-delay: 400ms; }
   .xai-delay-5 { animation-delay: 500ms; }
+
+  /* ─── Auth Page Utilities ─── */
+
+  /* Auth form card — ex-auth-form-card from DESIGN.md */
+  .xai-auth-card {
+    background-color: rgba(26, 28, 32, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 32px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  @media (min-width: 480px) {
+    .xai-auth-card {
+      padding: 40px;
+    }
+  }
+
+  /* Social login button — pill outline with provider icon */
+  .xai-social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    padding: 10px 16px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .xai-social-btn:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.35);
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+  .xai-social-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Text input — matches DESIGN.md text-input spec */
+  .xai-input {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    border: 1px solid #212327;
+    border-radius: 8px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 24px;
+    padding: 10px 16px;
+    transition: border-color 0.2s ease;
+    outline: none;
+  }
+  .xai-input::placeholder {
+    color: #7d8187;
+  }
+  .xai-input:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  /* Divider with centered text */
+  .xai-divider-text {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .xai-divider-text::before,
+  .xai-divider-text::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: #212327;
+  }
+  .xai-divider-text span {
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 16px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #7d8187;
+    white-space: nowrap;
+  }
+
+  /* ReactFlow animated edge effects */
+  .react-flow__edge.animated path {
+    stroke-dasharray: 6;
+    animation: react-flow-dash 1.2s linear infinite;
+  }
+  @keyframes react-flow-dash {
+    from {
+      stroke-dashoffset: 24;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
 }
+
