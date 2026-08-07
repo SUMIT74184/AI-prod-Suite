@@ -3,7 +3,16 @@ import { Brain, Code2, Lightbulb, Search, Workflow, ArrowRight } from 'lucide-re
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-white/20">
+    <div 
+      className="min-h-screen text-white selection:bg-white/20"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(10, 10, 10, 0.82) 0%, rgba(10, 10, 10, 0.96) 100%), url('/ais.jpeg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
 
       {/* Nav bar */}
       <nav className="border-b border-[#212327] px-6 py-3">

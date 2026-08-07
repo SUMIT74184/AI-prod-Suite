@@ -1,12 +1,42 @@
+# AI Productivity Suite — Python Backend Dependencies
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# Core framework
 fastapi
 uvicorn
+
+# Google Gemini (generation + embeddings)
 google-genai
+
+# Vector database (local, persistent)
+chromadb
+
+# Text chunking
+langchain-text-splitters
+
+# Document parsers
+pymupdf        # PDF parsing (import as 'fitz')
+python-docx    # Word (.docx) parsing
+
+# YouTube transcript fetching
+youtube-transcript-api
+
+# Web page scraping (for URL ingestion)
+httpx          # Async-capable HTTP client
+beautifulsoup4 # HTML parser
+lxml           # Fast HTML/XML parser backend for BeautifulSoup
+
+# LangGraph Web Research Agent
+langgraph
+langchain-core
+langchain-google-genai
+
+# Web search
 duckduckgo-search
+
+# Utilities
 pydantic
 python-dotenv
-youtube-transcript-api
-chromadb
-langchain-text-splitters
-pymupdf
-python-docx
-python-multipart
+python-multipart  # Required for FastAPI file upload (multipart/form-data)

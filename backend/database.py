@@ -34,6 +34,56 @@ def init_db():
             FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS prompts (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            section TEXT DEFAULT 'My Prompts',
+            tags TEXT DEFAULT '[]',
+            is_favorite INTEGER DEFAULT 0,
+            created_by TEXT DEFAULT 'user_1',
+            status TEXT DEFAULT 'Draft',
+            latest_version INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS prompt_versions (
+            id TEXT PRIMARY KEY,
+            prompt_id TEXT NOT NULL,
+            version_number INTEGER NOT NULL,
+            system_prompt TEXT,
+            user_prompt TEXT NOT NULL,
+            default_provider TEXT DEFAULT 'OpenAI',
+            default_model TEXT DEFAULT 'GPT-4o',
+            settings_json TEXT DEFAULT '{}',
+            variables_schema TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (prompt_id) REFERENCES prompts (id) ON DELETE CASCADE
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS prompt_runs (
+            id TEXT PRIMARY KEY,
+            prompt_id TEXT,
+            version_id TEXT,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            latency_ms REAL NOT NULL,
+            input_tokens INTEGER NOT NULL,
+            output_tokens INTEGER NOT NULL,
+            total_tokens INTEGER NOT NULL,
+            estimated_cost_usd REAL NOT NULL,
+            status TEXT DEFAULT 'Success',
+            output_text TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     
     conn.commit()
     conn.close()

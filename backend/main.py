@@ -1,40 +1,62 @@
-import os
-import uuid
-import tempfile
-import logging
+"""
+main.py
+=======
+AI Productivity Suite — FastAPI application entry point.
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
-from agents.web_researcher import run_research
-from agents.research_assistant import generate_assistant_response, ChatMessage
-from agents.code_reviewer import review_code
-from agents.rag_engine import (
-    ingest_file,
-    ingest_youtube,
-    get_session_info,
-    delete_session,
-)
+This file is intentionally minimal. It:
+    1. Creates the FastAPI app.
+    2. Mounts all routers (chat, ingest, generate, plus legacy agents).
+    3. Adds CORS middleware so the Next.js frontend can reach the API.
+    4. Initializes the SQLite database on startup.
+
+To run locally:
+    cd backend
+    uvicorn main:app --reload --port 8000
+"""
+
+import logging
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from database import (
-    init_db,
-    get_user_sessions,
-    get_session,
-    create_session,
-    add_message,
-    delete_db_session
-)
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+from database import init_db, get_user_sessions, get_session
+
+# ---------------------------------------------------------------------------
+# New modular routers
+# ---------------------------------------------------------------------------
+from routers.chat import router as chat_router
+from routers.ingest import router as ingest_router
+from routers.generate import router as generate_router
+from prompt_playground.api.router import router as prompt_playground_router
+
+# ---------------------------------------------------------------------------
+# Legacy agents (kept as-is — code reviewer and web researcher)
+# ---------------------------------------------------------------------------
+from agents.code_reviewer import review_code
+from routers.web_research import router as web_research_router
+from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AI Productivity Suite Backend")
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
+app = FastAPI(
+    title="AI Productivity Suite Backend",
+    description=(
+        "FastAPI backend powering the Research Assistant (RAG pipeline), "
+        "Code Reviewer, Web Research Agent, and Prompt Playground."
+    ),
+    version="2.0.0",
+)
 
-# Optional: Add CORS if you run frontend and backend on different ports without proxy
+# CORS — allows the Next.js dev server (port 3000) to call this API (port 8000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,14 +65,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Allowed file extensions for upload
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+
+# ---------------------------------------------------------------------------
+# Startup
+# ---------------------------------------------------------------------------
+
+@app.on_event("startup")
+def on_startup() -> None:
+    """Initialize the SQLite database tables on first run."""
+    init_db()
+    logger.info("Database initialized. Backend ready.")
 
 
-# ===================================================================
-# REQUEST / RESPONSE MODELS
-# ===================================================================
+# ---------------------------------------------------------------------------
+# Mount modular routers
+# ---------------------------------------------------------------------------
+
+# Research Assistant chat (RAG-augmented)
+app.include_router(chat_router)
+
+# Data ingestion (file / YouTube / URL)
+app.include_router(ingest_router)
+
+# Structured output generation (summary / notes / flashcards / mindmap)
+app.include_router(generate_router)
+
+# LangGraph Web Research Agent (plan / search / read / analyze / write_report)
+app.include_router(web_research_router)
+
+# Standalone Prompt Playground Router
+app.include_router(prompt_playground_router)
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+@app.get("/api/py/health")
+def health_check() -> dict:
+    """Simple liveness probe. Returns 200 if the server is running."""
+    return {"status": "healthy", "version": "2.0.0"}
+
+
+# ---------------------------------------------------------------------------
+# Legacy: Web Research Agent (deprecated — use /api/py/web-research/run)
+# Kept for backward compatibility with old frontend calls.
+# ---------------------------------------------------------------------------
 
 class ResearchRequest(BaseModel):
     query: str
@@ -58,192 +118,46 @@ class ResearchRequest(BaseModel):
 class ResearchResponse(BaseModel):
     report: str
 
-class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
-    session_id: str
-    user_id: str
-    module: Optional[str] = "research-assistant"
-    top_k: Optional[int] = 5  # number of RAG chunks to retrieve (higher for broad actions like summary)
-    youtube_url: Optional[str] = ""  # kept for backwards compatibility
+@app.post("/api/py/web-research", response_model=ResearchResponse)
+def perform_web_research_legacy(request: ResearchRequest) -> ResearchResponse:
+    """
+    DEPRECATED: Simple 2-step web research (search + generate).
+    Use POST /api/py/web-research/run for the LangGraph agent.
+    Kept here so the existing frontend still works during migration.
+    """
+    from web_research_agent.runner import run_agent
+    final_state = run_agent(request.query)
+    return ResearchResponse(report=final_state.get("report", ""))
 
-class ChatResponse(BaseModel):
-    reply: str
+
+# ---------------------------------------------------------------------------
+# Legacy: Code Reviewer Agent
+# ---------------------------------------------------------------------------
 
 class CodeReviewRequest(BaseModel):
     code: str
 
-class IngestYoutubeRequest(BaseModel):
-    session_id: str
-    youtube_url: str
-
-class IngestResponse(BaseModel):
-    success: bool
-    chunk_count: int
-    source_name: str
-    error: Optional[str] = None
-
-class SessionInfoResponse(BaseModel):
-    session_id: str
-    total_chunks: int
-    sources: List[str]
-    has_data: bool
-
-
-# ===================================================================
-# EXISTING ENDPOINTS
-# ===================================================================
-
-@app.get("/api/py/health")
-def health_check():
-    return {"status": "healthy"}
-
-@app.post("/api/py/web-research", response_model=ResearchResponse)
-def perform_web_research(request: ResearchRequest):
-    """
-    Endpoint that takes a query, searches the web, 
-    and returns an AI-generated report.
-    """
-    report = run_research(request.query)
-    return ResearchResponse(report=report)
-
-@app.post("/api/py/chat", response_model=ChatResponse)
-def perform_chat(request: ChatRequest):
-    """
-    Endpoint that takes chat history and a session_id.
-    Saves to the DB and returns the generated reply.
-    """
-    if request.messages:
-        last_msg = request.messages[-1]
-        
-        # Check if session exists
-        db_session = get_session(request.session_id)
-        if not db_session:
-            title = last_msg.content[:40] + ("..." if len(last_msg.content) > 40 else "")
-            create_session(request.session_id, request.user_id, title, request.module)
-            
-        # Save user message
-        add_message(request.session_id, "user", last_msg.content)
-
-    reply = generate_assistant_response(
-        messages=request.messages,
-        session_id=request.session_id,
-        top_k=request.top_k or 5,
-    )
-    
-    add_message(request.session_id, "assistant", reply)
-    return ChatResponse(reply=reply)
-
 @app.post("/api/py/code-review")
 def perform_code_review(request: CodeReviewRequest):
     """
-    Endpoint that takes raw code and returns a structured review
-    with bugs, security issues, improvements, explanation, etc.
+    Code Reviewer Agent — analyzes code and returns bugs, suggestions, etc.
     """
-    result = review_code(request.code)
-    return result
+    return review_code(request.code)
 
 
-# ===================================================================
-# RAG INGEST ENDPOINTS
-# ===================================================================
-
-@app.post("/api/py/ingest/file", response_model=IngestResponse)
-async def ingest_file_endpoint(
-    file: UploadFile = File(...),
-    session_id: str = Form(...),
-):
-    """
-    Upload a file (PDF, DOCX, TXT) and ingest it into the RAG pipeline.
-    The file is chunked, embedded, and stored in the vector database.
-    """
-    # Validate file extension
-    filename = file.filename or "unknown"
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {ext}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
-        )
-
-    # Validate file size
-    contents = await file.read()
-    if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large: {len(contents)} bytes. Maximum: {MAX_FILE_SIZE} bytes (50MB).",
-        )
-
-    # Save to temp file for parsing
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-            tmp.write(contents)
-            tmp_path = tmp.name
-
-        result = ingest_file(session_id, tmp_path)
-
-        return IngestResponse(
-            success="error" not in result,
-            chunk_count=result.get("chunk_count", 0),
-            source_name=filename,
-            error=result.get("error"),
-        )
-    except Exception as e:
-        logger.error(f"File ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Cleanup temp file
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
-
-
-@app.post("/api/py/ingest/youtube", response_model=IngestResponse)
-def ingest_youtube_endpoint(request: IngestYoutubeRequest):
-    """
-    Fetch a YouTube video's transcript and ingest it into the RAG pipeline.
-    """
-    try:
-        result = ingest_youtube(request.session_id, request.youtube_url)
-        return IngestResponse(
-            success="error" not in result,
-            chunk_count=result.get("chunk_count", 0),
-            source_name=result.get("source_name", request.youtube_url),
-            error=result.get("error"),
-        )
-    except Exception as e:
-        logger.error(f"YouTube ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/py/ingest/status/{session_id}", response_model=SessionInfoResponse)
-def get_ingest_status(session_id: str):
-    """
-    Get the ingestion status for a session — how many chunks, which sources.
-    """
-    info = get_session_info(session_id)
-    return SessionInfoResponse(**info)
-
-
-@app.delete("/api/py/ingest/{session_id}")
-def clear_session(session_id: str):
-    """
-    Delete all ingested data for a session and its DB record.
-    """
-    success = delete_session(session_id)
-    try:
-        delete_db_session(session_id)
-    except Exception as e:
-        logger.error(f"Error deleting DB session: {e}")
-        
-    if success:
-        return {"status": "deleted", "session_id": session_id}
-    return {"status": "not_found", "session_id": session_id}
+# ---------------------------------------------------------------------------
+# Conversation history endpoints (SQLite)
+# ---------------------------------------------------------------------------
 
 @app.get("/api/py/conversations")
 def list_conversations(user_id: str, module: Optional[str] = None):
+    """List all chat sessions for a user, optionally filtered by module."""
     return get_user_sessions(user_id, module)
+
 
 @app.get("/api/py/conversations/{session_id}")
 def get_conversation(session_id: str):
+    """Get the full message history for a specific session."""
     data = get_session(session_id)
     if not data:
         raise HTTPException(status_code=404, detail="Session not found")
