@@ -1,36 +1,51 @@
-# Dependencies
-node_modules/
+# ===========================================
+# Frontend (Next.js)
+# ===========================================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
 
-# Next.js build
-.next/
-out/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Python
+# ===========================================
+# Backend (Python/FastAPI)
+# ===========================================
 __pycache__/
 *.pyc
 venv/
 .venv/
 
+# Runtime data (SQLite DB, ChromaDB vectors)
+backend/data/
+*.db
+
+# ===========================================
+# Environment variables
+# ===========================================
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# ===========================================
 # Clerk
+# ===========================================
 /.clerk/
 
+# ===========================================
 # OS files
+# ===========================================
 .DS_Store
 Thumbs.db
 
+# ===========================================
 # IDE
+# ===========================================
 .vscode/
 .idea/
 
-# Debug
+# ===========================================
+# Debug & Build
+# ===========================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Vercel
 .vercel

@@ -1,64 +1,72 @@
 # AI Productivity Suite
 
-A modern, high-performance web application featuring 5 specialized AI agents designed to supercharge your workflow. Built with a stunning human-centric UI, a deep-space violet theme, and robust authentication.
+A modern, high-performance AI productivity platform with 5 specialized AI-powered modules. Built with a stunning xAI-inspired dark interface, featuring a Next.js frontend and a Python/FastAPI backend.
+
+## 📁 Project Structure
+
+```
+ai-productivity-suite/
+├── frontend/           ← Next.js 16 (React 19) application
+│   ├── app/            ← App Router: pages, layouts, API routes
+│   ├── components/     ← React components (ui/, layout/, shared/, workflow/)
+│   ├── lib/            ← Utilities, auth context, hooks
+│   └── public/         ← Static assets
+│
+├── backend/            ← Python/FastAPI application
+│   ├── app/            ← Application package
+│   │   ├── core/       ← LLM clients, prompts, database
+│   │   ├── routers/    ← API route handlers
+│   │   ├── services/   ← Business logic (code reviewer, web researcher)
+│   │   ├── generators/ ← Content generators (summary, notes, flashcards, mindmap)
+│   │   ├── rag/        ← RAG pipeline (embedder, ingester, retriever, store)
+│   │   ├── web_research_agent/  ← LangGraph web research agent
+│   │   └── prompt_playground/   ← Prompt Playground feature
+│   └── data/           ← Runtime data (SQLite, ChromaDB) — gitignored
+│
+├── DESIGN.md           ← Design system documentation
+└── README.md
+```
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
-Make sure you have Node.js 18+ installed. We recommend using `pnpm`.
+### 1. Frontend Setup
 ```bash
+cd frontend
 pnpm install
+cp .env.example .env.local   # Add your Clerk keys
+pnpm dev                      # Starts on http://localhost:3000
 ```
 
-### 2. Environment Variables
-Create a `.env.local` file in the root directory and add the following keys for authentication (Clerk) and the AI CLI tool (Gemini):
-```env
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-GEMINI_API_KEY=your_gemini_api_key
-```
-*(Note: Clerk protection is temporarily disabled in `middleware.ts.disabled` during local UI development. Rename it back to `middleware.ts` to re-enable route protection).*
-
-### 3. Run Development Server
+### 2. Backend Setup
 ```bash
-pnpm dev
+cd backend
+pip install -r requirements.txt
+cp .env.example .env          # Add your API keys
+uvicorn app.main:app --reload --port 8000
 ```
-Navigate to `http://localhost:3000` to access the Bento Box dashboard.
-
----
 
 ## 🧩 Modules
 
-1. **AI Research Assistant**: Your primary workspace for synthesizing documents, deep-diving into topics, and organizing knowledge.
-2. **AI Code Reviewer**: Analyze and optimize code structure automatically.
-3. **Prompt Playground**: Test, iterate, and perfect your system prompts in a dedicated sandbox.
-4. **Web Research Agent**: Deploy autonomous agents to scour the web and compile comprehensive reports.
-5. **Workflow Automation**: Chain multiple AI agents together to automate complex, multi-step tasks.
+1. **AI Research Assistant** — RAG-powered document analysis with chat, summary, notes, flashcards, and mind maps
+2. **AI Code Reviewer** — Automated code analysis with bug detection and optimization suggestions
+3. **Prompt Playground** — Multi-provider prompt testing sandbox with version control and metrics
+4. **Web Research Agent** — LangGraph-based autonomous web research with streaming reports
+5. **Workflow Automation** — Visual drag-and-drop workflow builder with node catalog
 
----
+## 💻 AI Code Reviewer CLI
 
-## 💻 AI Code Reviewer CLI Tool
-
-This project also includes a custom Node.js-based terminal tool for running AI code reviews directly from your CLI.
-
-**Setup the CLI Tool:**
 ```bash
-# Link the CLI globally so it can be run from anywhere
-npm link
+cd frontend
+npm link              # Link globally
+ai-reviewer path/to/file.js
 ```
-
-**Usage:**
-```bash
-# Review a specific file
-ai-reviewer path/to/your/file.js
-```
-*(Requires `GEMINI_API_KEY` to be set in your `.env` file).*
-
----
 
 ## 🛠 Tech Stack
-- **Framework**: Next.js 16 (React 19)
-- **Language**: TypeScript 5.7
-- **Styling**: Tailwind CSS 4 with custom `oklch` theme variables.
-- **Authentication**: `@clerk/nextjs`
-- **Icons**: Lucide React
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16, React 19, TypeScript 5.7, Tailwind CSS 4 |
+| Backend | Python, FastAPI, LangGraph, ChromaDB |
+| LLM Providers | OpenRouter (free models), Google Gemini |
+| Auth | Clerk (`@clerk/nextjs`) |
+| Design | xAI-inspired dark theme (Inter + Geist Mono) |
