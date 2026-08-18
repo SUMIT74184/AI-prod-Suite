@@ -83,7 +83,7 @@ export default function ResearchAssistantPage() {
       id: '1',
       role: 'assistant',
       content:
-        'Welcome to the AI Research Assistant!\n\nUpload documents, paste a **YouTube URL**, or add any **web page link** to build your knowledge base. I use RAG (Retrieval-Augmented Generation) to find the most relevant parts of your content when answering questions.\n\n**Quick start:**\n1. Upload a PDF, DOCX, or TXT file\n2. Paste a YouTube URL or any web link\n3. Use the quick-action buttons to generate summaries, notes, flashcards, or a mind map\n4. Ask me anything about the content!',
+        'welcome to Lumina research assistant',
       timestamp: new Date(),
     },
   ])
@@ -113,7 +113,7 @@ export default function ResearchAssistantPage() {
       const urlSessionId = searchParams.get('sessionId')
       if (!urlSessionId) return
       try {
-        const res = await fetch(`http://localhost:8000/api/py/conversations/${urlSessionId}`)
+        const res = await fetch(`/api/py/conversations/${urlSessionId}`)
         if (res.ok) {
           const data = await res.json()
           if (data.messages?.length > 0) {
@@ -347,7 +347,7 @@ export default function ResearchAssistantPage() {
   // ---------------------------------------------------------------------------
   const handleClearSession = async () => {
     try {
-      await fetch(`http://localhost:8000/api/py/ingest/${sessionId}`, { method: 'DELETE' })
+      await fetch(`/api/py/ingest/${sessionId}`, { method: 'DELETE' })
       window.dispatchEvent(new Event('refresh-conversations'))
       router.push('/modules/research-assistant')
       setSessionId(generateSessionId())

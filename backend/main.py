@@ -107,6 +107,20 @@ def health_check() -> dict:
     return {"status": "healthy", "version": "2.0.0"}
 
 
+@app.get("/api/py/health/llm")
+def llm_info() -> dict:
+    """Returns the currently active LLM provider and model name."""
+    from core.llm_client import get_active_provider, OPENROUTER_MODEL
+    import os
+    provider = get_active_provider()
+    return {
+        "provider": provider,
+        "openrouter_model": OPENROUTER_MODEL if os.environ.get("OPENROUTER_API_KEY") else None,
+        "openrouter_configured": bool(os.environ.get("OPENROUTER_API_KEY", "").strip()),
+        "gemini_configured": bool(os.environ.get("GEMINI_API_KEY", "").strip()),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Legacy: Web Research Agent (deprecated — use /api/py/web-research/run)
 # Kept for backward compatibility with old frontend calls.

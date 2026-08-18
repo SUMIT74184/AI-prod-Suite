@@ -24,15 +24,15 @@ class ExecutionService:
 
         # Get adapter for selected provider / model
         adapter = LLMAdapterFactory.get_adapter(
-            provider=request.model_config.provider, 
-            model=request.model_config.model
+            provider=request.llm_config.provider, 
+            model=request.llm_config.model
         )
 
         # Execute completion
         res = await adapter.generate(
             system_prompt=rendered_sys, 
             user_prompt=rendered_user, 
-            config=request.model_config
+            config=request.llm_config
         )
 
         # Record run metrics in DB

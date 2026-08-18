@@ -81,7 +81,10 @@ def retrieve(
     try:
         query_embedding = embed_query(question)
     except RuntimeError as exc:
-        logger.error("Failed to embed query: %s", exc)
+        if "Gemini API key is not configured" in str(exc):
+            logger.info("Retrieval bypassed: %s", exc)
+        else:
+            logger.error("Failed to embed query: %s", exc)
         return []
 
     # Search ChromaDB

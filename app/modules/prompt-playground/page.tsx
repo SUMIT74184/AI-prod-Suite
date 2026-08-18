@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/accordion'
 import { Loader2, Copy, Save, Search, Play, Settings2, History, Code2, Plus, Trash2, ArrowRight } from 'lucide-react'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
 interface SavedPrompt {
   id: string
@@ -51,6 +51,12 @@ const PROVIDERS = [
   { name: 'OpenAI', models: ['GPT-4o', 'GPT-4o-mini', 'GPT-4-turbo', 'GPT-3.5-turbo'] },
   { name: 'Anthropic', models: ['Claude 3.5 Sonnet', 'Claude 3 Opus', 'Claude 3 Haiku'] },
   { name: 'Gemini', models: ['Gemini 1.5 Pro', 'Gemini 1.5 Flash', 'Gemini 2.0 Flash'] },
+  { name: 'OpenRouter', models: [
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3-8b-instruct:free',
+    'deepseek/deepseek-chat-v3-0324:free'
+  ] },
 ]
 
 const ALL_MODELS = PROVIDERS.flatMap(p => p.models)
@@ -498,7 +504,7 @@ export default function PromptPlaygroundPage() {
             <div className={`flex flex-col h-full ${mode === 'compare' ? 'w-1/2 border-r border-[#212327]' : 'w-full'}`}>
               <div className="p-4 border-b border-[#212327] flex justify-between items-center bg-[#1a1c20]/30">
                 <Select value={model1} onValueChange={val => handleModelSelect(val, 1)}>
-                  <SelectTrigger className="w-[180px] bg-transparent border-0 font-mono text-[14px] text-white focus:ring-0 p-0 h-auto">
+                  <SelectTrigger className="w-[280px] bg-transparent border-0 font-mono text-[14px] text-white focus:ring-0 p-0 h-auto">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-[#191919] border-[#212327] text-white">
@@ -533,7 +539,7 @@ export default function PromptPlaygroundPage() {
               <div className="w-1/2 flex flex-col h-full bg-[#0a0a0a]">
                 <div className="p-4 border-b border-[#212327] flex justify-between items-center bg-[#1a1c20]/30">
                   <Select value={model2} onValueChange={val => handleModelSelect(val, 2)}>
-                    <SelectTrigger className="w-[180px] bg-transparent border-0 font-mono text-[14px] text-white focus:ring-0 p-0 h-auto">
+                    <SelectTrigger className="w-[280px] bg-transparent border-0 font-mono text-[14px] text-white focus:ring-0 p-0 h-auto">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[#191919] border-[#212327] text-white">

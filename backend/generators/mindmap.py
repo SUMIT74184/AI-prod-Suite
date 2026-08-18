@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
-from core.gemini_client import gemini_client, GENERATION_MODEL
+from core.llm_client import generate_text
 from core.prompts import MINDMAP_SYSTEM_PROMPT
 from rag.retriever import RetrievedChunk, format_context_block
 
@@ -98,11 +98,7 @@ def generate_mindmap(chunks: List[RetrievedChunk]) -> MindmapResult:
     logger.info("Generating mindmap from %d chunks", len(chunks))
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=prompt,
-        )
-        raw_text = response.text.strip()
+        raw_text = generate_text(prompt).strip()
     except Exception as exc:
         logger.error("Mindmap generation API call failed: %s", exc)
         return MindmapResult(error=f"AI generation failed: {exc}")

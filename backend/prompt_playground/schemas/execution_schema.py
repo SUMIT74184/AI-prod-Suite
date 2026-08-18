@@ -5,7 +5,7 @@ DTOs for running prompts against single or multiple LLM providers.
 """
 
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class ModelConfig(BaseModel):
     provider: str = Field(..., description="Provider name (OpenAI, Anthropic, Gemini)")
@@ -18,11 +18,13 @@ class ModelConfig(BaseModel):
     json_schema: Optional[str] = Field(default=None)
 
 class ExecuteRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     prompt_id: Optional[str] = None
     system_prompt: str = Field(default="")
     user_prompt: str = Field(..., description="Raw user prompt with {{variables}}")
     variables: Dict[str, str] = Field(default_factory=dict, description="Key-value mapping for variables")
-    model_config: ModelConfig
+    llm_config: ModelConfig = Field(..., alias="model_config")
 
 class CompareRequest(BaseModel):
     prompt_id: Optional[str] = None

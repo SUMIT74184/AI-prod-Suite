@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
-from core.gemini_client import gemini_client, GENERATION_MODEL
+from core.llm_client import generate_text
 from core.prompts import FLASHCARDS_SYSTEM_PROMPT
 from rag.retriever import RetrievedChunk, format_context_block
 
@@ -99,11 +99,7 @@ def generate_flashcards(chunks: List[RetrievedChunk]) -> FlashcardsResult:
     logger.info("Generating flashcards from %d chunks", len(chunks))
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=prompt,
-        )
-        raw_text = response.text.strip()
+        raw_text = generate_text(prompt).strip()
     except Exception as exc:
         logger.error("Flashcard generation API call failed: %s", exc)
         return FlashcardsResult(error=f"AI generation failed: {exc}")

@@ -23,7 +23,7 @@ from typing import List, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from core.gemini_client import gemini_client, GENERATION_MODEL
+from core.llm_client import generate_text
 from core.prompts import CHAT_SYSTEM_PROMPT
 from rag.retriever import retrieve, format_context_block
 from database import get_session, create_session, add_message
@@ -118,13 +118,9 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     # --- Generate ---
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=full_prompt,
-        )
-        reply = response.text
+        reply = generate_text(full_prompt)
     except Exception as exc:
-        logger.error("Gemini generation failed: %s", exc)
+        logger.error("LLM generation failed: %s", exc)
         reply = f"Error communicating with AI: {exc}"
 
     # --- Persist to SQLite ---

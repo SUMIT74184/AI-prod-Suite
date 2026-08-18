@@ -10,7 +10,7 @@ Public API:
 import logging
 from typing import List
 
-from core.gemini_client import gemini_client, GENERATION_MODEL
+from core.llm_client import generate_text
 from core.prompts import SUMMARY_SYSTEM_PROMPT
 from rag.retriever import RetrievedChunk, format_context_block
 
@@ -52,11 +52,7 @@ def generate_summary(chunks: List[RetrievedChunk]) -> str:
     logger.info("Generating summary from %d chunks", len(chunks))
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=prompt,
-        )
-        return response.text
+        return generate_text(prompt)
     except Exception as exc:
         logger.error("Summary generation failed: %s", exc)
         return f"Error generating summary: {exc}"

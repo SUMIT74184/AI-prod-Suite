@@ -26,6 +26,19 @@ PRICING_TABLE = {
     "gemini-1.5-flash": (0.000075, 0.00030),
     "gemini-2.0-flash": (0.00010, 0.00040),
 
+    # OpenRouter Free Models (always $0)
+    "nvidia/nemotron-3-ultra-550b-a55b:free": (0.0, 0.0),
+    "google/gemini-2.0-flash-exp:free": (0.0, 0.0),
+    "google/gemini-flash-1.5-8b:free": (0.0, 0.0),
+    "meta-llama/llama-3-8b-instruct:free": (0.0, 0.0),
+    "meta-llama/llama-3.1-8b-instruct:free": (0.0, 0.0),
+    "microsoft/phi-3-mini-128k-instruct:free": (0.0, 0.0),
+    "mistralai/mistral-7b-instruct:free": (0.0, 0.0),
+    "qwen/qwen-2-7b-instruct:free": (0.0, 0.0),
+    "deepseek/deepseek-chat-v3-0324:free": (0.0, 0.0),
+    # If model name contains ':free', it's a free OpenRouter model
+    ":free": (0.0, 0.0),
+
     # Default fallback
     "default": (0.0010, 0.0030),
 }

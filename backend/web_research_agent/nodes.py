@@ -26,7 +26,7 @@ Nodes:
 import logging
 from typing import List
 
-from core.gemini_client import gemini_client, GENERATION_MODEL
+from core.llm_client import generate_text
 from web_research_agent.state import AgentState, SearchResult, PageContent
 from web_research_agent.tools import web_search, fetch_page_content
 
@@ -77,11 +77,7 @@ Example output:
 """
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=prompt,
-        )
-        raw = response.text.strip()
+        raw = generate_text(prompt).strip()
 
         # Parse "1. query text" → ["query text", ...]
         sub_queries = []
@@ -144,12 +140,9 @@ Write 2 focused search queries to fill in the missing information.
 Return ONLY the queries, one per line, no numbering.
 """
         try:
-            resp = gemini_client.models.generate_content(
-                model=GENERATION_MODEL,
-                contents=refine_prompt,
-            )
+            resp = generate_text(refine_prompt)
             queries_to_run = [
-                q.strip() for q in resp.text.strip().splitlines()
+                q.strip() for q in resp.strip().splitlines()
                 if q.strip()
             ][:2]
         except Exception:
@@ -274,11 +267,7 @@ DECISION: SUFFICIENT or NEED_MORE
 """
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=prompt,
-        )
-        raw = response.text.strip()
+        raw = generate_text(prompt).strip()
 
         # Parse DECISION line
         needs_more = False
@@ -378,11 +367,7 @@ Rules:
 """
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GENERATION_MODEL,
-            contents=prompt,
-        )
-        report = response.text.strip()
+        report = generate_text(prompt).strip()
         logger.info("[write_report] Report generated (%d chars)", len(report))
         return {"report": report, "status": "complete"}
 

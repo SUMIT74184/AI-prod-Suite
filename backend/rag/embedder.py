@@ -42,6 +42,9 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
     if not texts:
         raise ValueError("embed_texts() received an empty list.")
 
+    if gemini_client is None:
+        raise RuntimeError("Gemini API key is not configured. Vector embeddings are disabled.")
+
     embeddings: List[List[float]] = []
 
     # Process in batches to respect API rate limits
