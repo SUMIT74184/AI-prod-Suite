@@ -1,0 +1,76 @@
+# Code Reviewer 2.0: Developer Ecosystem Upgrade
+
+Transform the "Code Reviewer" module from a simple copy-paste web tool into a powerful, automated engineering ecosystem. This encompasses creating a local CLI tool that integrates deeply with developer workflows (Git hooks, IDEs, RAG-based context), as well as building out advanced analytics and team management capabilities on the web dashboard.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Database Architecture**: The Team Management and Technical Debt Scorecard features require significant relational mapping (Users -> Teams -> Repositories -> Scans). We need to confirm if we should stick with the current SQLite setup or prepare a migration strategy to PostgreSQL for better scalability.
+
+> [!WARNING]
+> **CLI Authentication**: Building a local CLI means we will need an authentication mechanism (API keys or a browser-based CLI login flow via OAuth) to tie local terminal activity back to the user's web dashboard analytics securely.
+
+## Open Questions
+
+1. **Language Choice for CLI:** Should the CLI be built in Node.js (using `Ink` for the interactive TUI) or Python (using `Textual` or `Rich` to share logic natively with the FastAPI backend)? Node/Ink is generally the industry standard for rich interactive terminal UIs.
+2. **LLM Context Strategy:** For "Local Repo Indexing", should the CLI chunk and send raw files to the backend for embedding, or should we run a lightweight local embedding model on the user's machine to save bandwidth?
+3. **Git Provider API:** For the PR/MR bot, are we targeting GitHub exclusively for the MVP, or do we need abstract adapters for GitLab/Bitbucket out of the gate?
+
+## Proposed Changes
+
+### 1. Developer Workflows & Git Hooks
+
+#### [NEW] `cli/src/commands/install-hook.ts`
+- **Purpose:** Injects a `pre-commit` shell script into `.git/hooks/pre-commit` of the active repo.
+- **Details:** The hook will run `cli scan --staged` to evaluate only the staged files against custom rules, blocking commits if high-severity vulnerabilities are found.
+
+#### [NEW] `backend/app/routers/webhooks.py`
+- **Purpose:** Listens for GitHub PR webhook events (`pull_request.opened` or `synchronize`).
+- **Details:** Automatically triggers the AI Code Reviewer on the diff, generates a markdown summary, and posts it back to the PR via the GitHub REST API.
+
+---
+
+### 2. Context & Intelligence Enhancements
+
+#### [NEW] `cli/src/commands/index.ts`
+- **Purpose:** Scans the local repository, parses out functions and classes, and prepares them for semantic search.
+- **Details:** Sends these chunks to a new `/api/py/ingest/repo` endpoint to vectorize and store them. This ensures the LLM understands cross-file dependencies and custom internal architectures.
+
+#### [NEW] `backend/app/models/rules.py`
+- **Purpose:** Schema and parsing logic for custom `.lumina.yml` rule files.
+- **Details:** Reads custom linting and security rules (e.g., "no inline styles", "use parameterized queries only") and injects them directly into the Code Reviewer LLM's system prompt instructions.
+
+---
+
+### 3. Dashboard & Analytics Power-Ups
+
+#### [MODIFY] `frontend/app/modules/code-reviewer/page.tsx`
+- **Purpose:** Evolves the UI from a simple paste box to a full Dashboard overview.
+- **Details:** Adds data visualizations (charts/graphs) for the "Technical Debt Scorecard", showing trend lines for historical vulnerabilities fixed over time.
+
+#### [NEW] `backend/app/core/database/schema.py` (Additions)
+- **Purpose:** New tables for `teams`, `repositories`, `scan_metrics`, and `vulnerabilities`.
+- **Details:** Required to track org-level metrics, scan frequencies, and health scores across multiple repos.
+
+---
+
+### 4. Interactive IDE / Terminal Experience
+
+#### [NEW] `cli/src/tui/App.tsx`
+- **Purpose:** Uses `ink` (React for CLI) to render an interactive Terminal User Interface (TUI).
+- **Details:** After running `cli scan`, instead of a text dump, developers get a navigable, interactive menu of bugs. They can use arrow keys to browse issues and press "A" to Auto-fix.
+
+#### [NEW] `cli/src/utils/ide.ts`
+- **Purpose:** Utility to bridge the terminal and web dashboard directly to the IDE.
+- **Details:** Generates and executes deep links like `vscode://file/{absolute_path}:{line}` so users can jump straight to the exact line of code.
+
+## Verification Plan
+
+### Automated Tests
+- Add unit tests for the CLI to ensure the local RAG chunking logic correctly parses the ASTs of common project files.
+- Test the `.lumina.yml` parser against malformed YAML files to ensure graceful degradation.
+
+### Manual Verification
+- **E2E CLI Flow**: Run `cli install --hook`, stage a file with a known vulnerability (e.g., SQL injection), attempt to commit, and verify the commit is blocked with an interactive warning.
+- **Dashboard E2E**: Perform multiple scans on a test repository and verify the Technical Debt scorecard on the Next.js frontend updates accordingly.
+- **TUI Navigability**: Launch the TUI, use arrow keys to navigate the vulnerabilities, and press "Open in VS Code" to verify the IDE deep linking works seamlessly.
