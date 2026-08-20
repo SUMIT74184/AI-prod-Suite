@@ -32,6 +32,7 @@ from app.routers.chat import router as chat_router
 from app.routers.ingest import router as ingest_router
 from app.routers.generate import router as generate_router
 from app.prompt_playground.api.router import router as prompt_playground_router
+from app.routers.code_review import router as code_review_router
 
 # ---------------------------------------------------------------------------
 # Legacy agents (kept as-is — code reviewer and web researcher)
@@ -93,6 +94,9 @@ app.include_router(generate_router)
 # LangGraph Web Research Agent (plan / search / read / analyze / write_report)
 app.include_router(web_research_router)
 
+# LangGraph Code Review Agent (parse / bugs / security / complexity / synthesize / tests)
+app.include_router(code_review_router)
+
 # Standalone Prompt Playground Router
 app.include_router(prompt_playground_router)
 
@@ -145,7 +149,7 @@ def perform_web_research_legacy(request: ResearchRequest) -> ResearchResponse:
 
 
 # ---------------------------------------------------------------------------
-# Legacy: Code Reviewer Agent
+# Legacy: Code Reviewer Agent (DEPRECATED — use /api/py/code-review/run)
 # ---------------------------------------------------------------------------
 
 class CodeReviewRequest(BaseModel):
@@ -154,8 +158,12 @@ class CodeReviewRequest(BaseModel):
 @app.post("/api/py/code-review")
 def perform_code_review(request: CodeReviewRequest):
     """
-    Code Reviewer Agent — analyzes code and returns bugs, suggestions, etc.
+    DEPRECATED: Single-shot code review.
+    Use POST /api/py/code-review/run for the LangGraph agent.
+    Use GET  /api/py/code-review/stream for SSE streaming.
+    Kept here so the existing frontend still works during migration.
     """
+    logger.warning("Legacy /api/py/code-review called — migrate to /api/py/code-review/run")
     return review_code(request.code)
 
 
