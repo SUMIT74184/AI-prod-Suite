@@ -9,13 +9,7 @@ It exposes two functions:
     run_agent(query)     → AgentState   (blocking — waits for full completion)
     stream_agent(query)  → Generator    (yields dicts after each node completes)
 
-Why two functions?
-    - run_agent() is simple: fire-and-forget, wait, get the full result.
-      Good for programmatic use and tests.
-    - stream_agent() is for SSE (Server-Sent Events): the frontend can
-      display real-time step progress as each node finishes.
-
-Usage example:
+Usage:
     from app.web_research_agent.runner import run_agent, stream_agent
 
     # Blocking
@@ -24,7 +18,7 @@ Usage example:
 
     # Streaming (for FastAPI SSE endpoint)
     for update in stream_agent("Explain transformer architecture"):
-        print(update)  # {"status": "plan", "data": {"sub_queries": [...]}}
+        print(update)  # {"status": "plan", "message": "...", "data": {...}}
 """
 
 import logging
@@ -32,6 +26,7 @@ from typing import Generator, Dict, Any
 
 from app.web_research_agent.graph import compiled_graph
 from app.web_research_agent.state import AgentState, initial_state
+from app.web_research_agent.streaming import format_stream_event
 
 logger = logging.getLogger(__name__)
 
@@ -44,21 +39,11 @@ def run_agent(query: str) -> AgentState:
     """
     Run the full research agent graph and return the final state.
 
-    The graph runs synchronously: plan → search → read → analyze →
-    (possibly loop) → write_report. The function blocks until the
-    entire graph has finished.
-
     Args:
         query: The research topic or question to investigate.
 
     Returns:
-        The final AgentState dict containing:
-            - report:       The Markdown research report
-            - sources:      List of URLs used
-            - sub_queries:  Sub-questions that were searched
-            - analysis:     Gemini's synthesis of findings
-            - iteration:    How many search loops were performed
-            - error:        Error message if any node failed, else None
+        The final AgentState dict.
     """
     logger.info("Starting research agent for query: '%s'", query)
     state = initial_state(query)
@@ -73,7 +58,6 @@ def run_agent(query: str) -> AgentState:
         return final_state
     except Exception as exc:
         logger.error("Agent failed: %s", exc)
-        # Return a safe error state so the API can still respond
         return {
             **state,
             "report": f"# Research Failed\n\nThe agent encountered an error: {exc}",
@@ -83,34 +67,16 @@ def run_agent(query: str) -> AgentState:
 
 
 # ---------------------------------------------------------------------------
-# Streaming runner
+# Streaming runner — uses enriched formatter from streaming/ package
 # ---------------------------------------------------------------------------
 
 def stream_agent(query: str) -> Generator[Dict[str, Any], None, None]:
     """
-    Run the research agent and yield a progress update after each node.
+    Run the research agent and yield enriched progress updates after each node.
 
-    KEY DESIGN: The agent runs EXACTLY ONCE here. Each node completion
-    emits a progress event. After the graph finishes, the final "complete"
-    event includes the full report, sources, and sub_queries.
-
-    This means the frontend ONLY needs to call /stream — it does NOT
-    need a second call to /run to get the report.
-
-    SSE event format per node:
-        {"status": "plan", "message": "...", "data": {...}}
-
-    Final event:
-        {
-          "status": "complete",
-          "message": "Research complete!",
-          "data": {
-            "report":      "# Full Markdown Report...",
-            "sources":     ["https://..."],
-            "sub_queries": ["query 1", ...],
-            "iteration":   1
-          }
-        }
+    Each node completion emits a rich insight event with granular data
+    (search result previews, page titles, analysis excerpts, etc.)
+    so the frontend can display real-time activity.
 
     Args:
         query: The research topic.
@@ -120,7 +86,7 @@ def stream_agent(query: str) -> Generator[Dict[str, Any], None, None]:
     """
     logger.info("Streaming research agent for query: '%s'", query)
     state = initial_state(query)
-    final_state: Dict[str, Any] = dict(state)   # will be updated as nodes run
+    final_state: Dict[str, Any] = dict(state)
 
     try:
         for event in compiled_graph.stream(state):
@@ -131,7 +97,8 @@ def stream_agent(query: str) -> Generator[Dict[str, Any], None, None]:
                 # Merge node output into our tracked final_state
                 final_state.update(node_output)
 
-                update = _format_stream_event(node_name, node_output)
+                # Use the enriched formatter from streaming/ package
+                update = format_stream_event(node_name, node_output)
                 logger.debug("Stream event: %s", update)
                 yield update
 
@@ -156,64 +123,3 @@ def stream_agent(query: str) -> Generator[Dict[str, Any], None, None]:
             "message": f"Agent failed: {exc}",
             "data": {},
         }
-
-
-# ---------------------------------------------------------------------------
-# Stream event formatter
-# ---------------------------------------------------------------------------
-
-def _format_stream_event(node_name: str, node_output: dict) -> Dict[str, Any]:
-    """
-    Convert a raw LangGraph stream event into a clean frontend-friendly dict.
-
-    Args:
-        node_name:   The name of the node that just completed.
-        node_output: The partial state dict returned by that node.
-
-    Returns:
-        A dict with "status", "message", and "data" keys.
-    """
-    # Human-readable messages for each node
-    messages = {
-        "plan":         "Planning research strategy…",
-        "search":       "Searching the web…",
-        "read":         "Reading and extracting content…",
-        "analyze":      "Analyzing gathered information…",
-        "write_report": "Writing the research report…",
-    }
-
-    message = messages.get(node_name, f"Running {node_name}…")
-
-    # Extract meaningful data to send to the frontend
-    data: Dict[str, Any] = {}
-
-    if node_name == "plan":
-        data["sub_queries"] = node_output.get("sub_queries", [])
-
-    elif node_name == "search":
-        results = node_output.get("search_results", [])
-        data["result_count"] = len(results)
-        data["iteration"] = node_output.get("iteration", 1)
-
-    elif node_name == "read":
-        pages = node_output.get("page_contents", [])
-        data["pages_fetched"] = len(pages)
-        data["sources"] = [p.url for p in pages]
-
-    elif node_name == "analyze":
-        data["needs_more"] = node_output.get("needs_more", False)
-        # Send a short preview of the analysis (not the whole thing)
-        analysis = node_output.get("analysis", "")
-        data["analysis_preview"] = analysis[:200] + "…" if len(analysis) > 200 else analysis
-
-    elif node_name == "write_report":
-        report = node_output.get("report", "")
-        data["report_length"] = len(report)
-        # Do NOT send the full report in the stream — it comes in the final
-        # blocking response. Sending it here would double the data transfer.
-
-    return {
-        "status": node_name,
-        "message": message,
-        "data": data,
-    }

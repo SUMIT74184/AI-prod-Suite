@@ -184,3 +184,16 @@ def get_conversation(session_id: str):
     if not data:
         raise HTTPException(status_code=404, detail="Session not found")
     return data
+
+class UpdateSessionRequest(BaseModel):
+    title: str
+
+@app.patch("/api/py/conversations/{session_id}")
+def update_conversation(session_id: str, req: UpdateSessionRequest):
+    """Update a session's title."""
+    from app.core.database import update_session_title
+    success = update_session_title(session_id, req.title)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update session title")
+    return {"status": "success", "session_id": session_id, "new_title": req.title}
+

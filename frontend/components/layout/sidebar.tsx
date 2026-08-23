@@ -13,6 +13,11 @@ import {
   Plus,
   Trash2,
   Settings,
+  ChevronDown,
+  ChevronRight,
+  Edit2,
+  MoreHorizontal,
+  Pin,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -39,6 +44,35 @@ export default function Sidebar() {
   
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [menuId, setMenuId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.conversation-menu-trigger') && !target.closest('.conversation-menu-content')) {
+        setMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    // Auto-expand active module when pathname changes
+    const activeModule = modules.find(m => pathname.includes(m.id))
+    if (activeModule) {
+      setExpandedModules(prev => ({ ...prev, [activeModule.id]: true }))
+    }
+  }, [pathname])
+
+  const toggleModule = (e: React.MouseEvent, moduleId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setExpandedModules(prev => ({ ...prev, [moduleId]: !prev[moduleId] }))
+  }
 
   const fetchConversations = async () => {
     if (!userId) return
@@ -71,6 +105,47 @@ export default function Sidebar() {
       setConversations(conversations.filter(c => c.id !== id))
     } catch (e) {
       console.error('Failed to delete conversation:', e)
+    }
+  }
+
+  const startEditing = (e: React.MouseEvent, id: string, title: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditingId(id)
+    setEditTitle(title)
+  }
+
+  const saveEditing = async (id: string) => {
+    if (!editTitle.trim()) {
+      setEditingId(null)
+      return
+    }
+    
+    try {
+      const res = await fetch(`http://localhost:8000/api/py/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editTitle.trim() })
+      })
+      
+      if (res.ok) {
+        setConversations(conversations.map(c => 
+          c.id === id ? { ...c, title: editTitle.trim() } : c
+        ))
+      }
+    } catch (e) {
+      console.error('Failed to rename conversation:', e)
+    } finally {
+      setEditingId(null)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveEditing(id)
+    } else if (e.key === 'Escape') {
+      setEditingId(null)
     }
   }
 
@@ -109,65 +184,143 @@ export default function Sidebar() {
       )}
 
       {/* Modules Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
+      <nav className="flex-1 overflow-y-auto px-2 py-4 pb-32">
         <div className={!isCollapsed ? 'mb-6' : 'mb-4'}>
           {!isCollapsed && (
             <p className="px-3 xai-caption-mono-sm text-[#7d8187] mb-3">
               Modules
             </p>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {modules.map(module => {
               const Icon = module.icon
               const isActive = pathname.includes(module.id)
+              const isExpanded = expandedModules[module.id]
+              const moduleConvs = conversations.filter(c => c.module === module.id)
+
               return (
-                <Link
-                  key={module.id}
-                  href={`/modules/${module.id}`}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
+                <div key={module.id} className="mb-1">
+                  <div className={cn(
+                    'group flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200',
                     isActive
                       ? 'bg-[#1a1c20] text-white border-l-2 border-white'
                       : 'text-[#7d8187] hover:text-white hover:bg-[#1a1c20]/50'
+                  )}>
+                    <Link
+                      href={`/modules/${module.id}`}
+                      className="flex items-center gap-3 flex-1 min-w-0"
+                      title={isCollapsed ? module.label : undefined}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      {!isCollapsed && <span className="text-sm font-normal truncate">{module.label}</span>}
+                    </Link>
+                    
+                    {!isCollapsed && moduleConvs.length > 0 && (
+                      <button
+                        onClick={(e) => toggleModule(e, module.id)}
+                        className="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded-md transition-colors"
+                        aria-label="Toggle folder"
+                      >
+                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Nested Conversations History */}
+                  {!isCollapsed && isExpanded && moduleConvs.length > 0 && (
+                    <div className="mt-1 ml-4 border-l border-[#212327] pl-2 space-y-0.5">
+                      {moduleConvs.map(conv => (
+                        <div key={conv.id} className="relative group/item">
+                          <Link
+                            href={`/modules/${conv.module}?sessionId=${conv.id}`}
+                            className={cn(
+                              "flex items-center px-3 py-1.5 rounded-lg hover:bg-[#1a1c20]/50 transition-colors overflow-hidden",
+                              pathname.includes(conv.module) && (typeof window !== 'undefined' && window.location.search.includes(conv.id))
+                                ? "bg-[#1a1c20]/30 text-white" 
+                                : "text-[#7d8187]"
+                            )}
+                          >
+                            {editingId === conv.id ? (
+                              <input
+                                autoFocus
+                                value={editTitle}
+                                onChange={e => setEditTitle(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, conv.id)}
+                                onBlur={() => saveEditing(conv.id)}
+                                className="flex-1 bg-transparent text-[13px] text-white outline-none border-b border-[#ff7a17] w-full min-w-0"
+                                onClick={e => { e.preventDefault(); e.stopPropagation() }}
+                              />
+                            ) : (
+                              <span className="block text-[13px] group-hover/item:text-white truncate font-normal transition-all duration-200 group-hover/item:pr-6">
+                                {conv.title}
+                              </span>
+                            )}
+                          </Link>
+                          
+                          {/* 3 Dots Menu Button */}
+                          {editingId !== conv.id && (
+                            <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 flex items-center transition-opacity">
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setMenuId(menuId === conv.id ? null : conv.id)
+                                }}
+                                className="conversation-menu-trigger p-1 hover:bg-[#212327] text-[#7d8187] hover:text-white rounded-md transition-colors"
+                                aria-label="Open menu"
+                              >
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Dropdown Menu */}
+                          {menuId === conv.id && (
+                            <div 
+                              className="conversation-menu-content absolute right-0 top-8 w-32 bg-[#1a1c20] border border-[#212327] rounded-md shadow-xl z-[100] py-1 overflow-hidden"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  // togglePin(conv.id) placeholder for future pin functionality
+                                  setMenuId(null)
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#dadbdf] hover:text-white hover:bg-[#212327] transition-colors"
+                              >
+                                <Pin className="w-3.5 h-3.5" />
+                                Pin
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  startEditing(e, conv.id, conv.title)
+                                  setMenuId(null)
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#dadbdf] hover:text-white hover:bg-[#212327] transition-colors"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                Rename
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  deleteConversation(conv.id, e)
+                                  setMenuId(null)
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#ff4444] hover:bg-[#ff4444]/10 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  title={isCollapsed ? module.label : undefined}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  {!isCollapsed && <span className="text-sm font-normal truncate">{module.label}</span>}
-                </Link>
+                </div>
               )
             })}
           </div>
         </div>
-
-        {/* Conversations History */}
-        {!isCollapsed && conversations.length > 0 && (
-          <div>
-            <p className="px-3 xai-caption-mono-sm text-[#7d8187] mb-3">
-              Recent
-            </p>
-            <div className="space-y-0.5">
-              {conversations.map(conv => (
-                <Link
-                  key={conv.id}
-                  href={`/modules/${conv.module}?sessionId=${conv.id}`}
-                  className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#1a1c20]/50 transition-colors"
-                >
-                  <span className="flex-1 text-sm text-[#7d8187] group-hover:text-white truncate font-normal transition-colors">
-                    {conv.title}
-                  </span>
-                  <button
-                    onClick={(e) => deleteConversation(conv.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[rgba(255,68,68,0.15)] rounded-full transition-all"
-                    aria-label="Delete conversation"
-                  >
-                    <Trash2 className="w-3 h-3 text-[#ff4444]" />
-                  </button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </nav>
 
       {/* Footer */}

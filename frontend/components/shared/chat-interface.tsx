@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { User, Bot } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface Message {
   id: string
@@ -20,57 +22,6 @@ interface ChatInterfaceProps {
 // ---------------------------------------------------------------------------
 // Markdown Parsing Helpers
 // ---------------------------------------------------------------------------
-
-interface Block {
-  type: 'code' | 'text'
-  language?: string
-  content: string
-}
-
-const parseBlocks = (text: string): Block[] => {
-  const lines = text.split('\n')
-  const blocks: Block[] = []
-  let inCodeBlock = false
-  let currentLanguage = ''
-  let currentContent: string[] = []
-
-  for (const line of lines) {
-    if (line.trim().startsWith('```')) {
-      if (inCodeBlock) {
-        blocks.push({
-          type: 'code',
-          language: currentLanguage,
-          content: currentContent.join('\n'),
-        })
-        inCodeBlock = false
-        currentLanguage = ''
-        currentContent = []
-      } else {
-        if (currentContent.length > 0) {
-          blocks.push({
-            type: 'text',
-            content: currentContent.join('\n'),
-          })
-        }
-        inCodeBlock = true
-        currentLanguage = line.trim().slice(3).trim()
-        currentContent = []
-      }
-    } else {
-      currentContent.push(line)
-    }
-  }
-
-  if (currentContent.length > 0) {
-    blocks.push({
-      type: inCodeBlock ? 'code' : 'text',
-      language: inCodeBlock ? currentLanguage : undefined,
-      content: currentContent.join('\n'),
-    })
-  }
-
-  return blocks
-}
 
 function CodeBlock({ language, content }: { language?: string; content: string }) {
   const [copied, setCopied] = useState(false)
@@ -100,160 +51,6 @@ function CodeBlock({ language, content }: { language?: string; content: string }
   )
 }
 
-const renderInlineStyles = (text: string, appendCursor: boolean) => {
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g
-  const parts = text.split(regex)
-
-  const jsxParts = parts.map((part, index) => {
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <code key={index} className="px-1.5 py-0.5 mx-0.5 rounded bg-[#202020] border border-[#2d2d2d] text-[#ffc285] font-mono text-[13px] align-middle">
-          {part.slice(1, -1)}
-        </code>
-      )
-    } else if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-semibold text-white">{part.slice(2, -2)}</strong>
-    } else if (part.startsWith('*') && part.endsWith('*')) {
-      return <em key={index} className="italic text-[#dadbdf]">{part.slice(1, -1)}</em>
-    }
-    return part
-  })
-
-  if (appendCursor) {
-    jsxParts.push(
-      <span
-        key="cursor"
-        className="inline-block w-1.5 h-4 ml-1 bg-[#ff7a17] animate-[pulse_1s_infinite] align-middle"
-      />
-    )
-  }
-
-  return <>{jsxParts}</>
-}
-
-const renderTextBlock = (text: string, isStreamingMessage: boolean, isLastBlock: boolean) => {
-  const lines = text.split('\n')
-  const elements: React.ReactNode[] = []
-  let currentList: React.ReactNode[] = []
-  let currentListType: 'ul' | 'ol' | null = null
-
-  const flushList = (key: string) => {
-    if (currentList.length > 0) {
-      if (currentListType === 'ul') {
-        elements.push(
-          <ul key={`ul-${key}`} className="list-disc pl-6 space-y-1.5 my-2 text-[#dadbdf]">
-            {currentList}
-          </ul>
-        )
-      } else if (currentListType === 'ol') {
-        elements.push(
-          <ol key={`ol-${key}`} className="list-decimal pl-6 space-y-1.5 my-2 text-[#dadbdf]">
-            {currentList}
-          </ol>
-        )
-      }
-      currentList = []
-      currentListType = null
-    }
-  }
-
-  lines.forEach((line, idx) => {
-    const trimmed = line.trim()
-    const isLastLine = idx === lines.length - 1
-
-    if (trimmed.startsWith('# ')) {
-      flushList(idx.toString())
-      elements.push(
-        <h1 key={idx} className="text-xl font-bold text-white mt-4 mb-2">
-          {renderInlineStyles(trimmed.slice(2), isStreamingMessage && isLastBlock && isLastLine)}
-        </h1>
-      )
-    } else if (trimmed.startsWith('## ')) {
-      flushList(idx.toString())
-      elements.push(
-        <h2 key={idx} className="text-lg font-bold text-white mt-3 mb-2">
-          {renderInlineStyles(trimmed.slice(3), isStreamingMessage && isLastBlock && isLastLine)}
-        </h2>
-      )
-    } else if (trimmed.startsWith('### ')) {
-      flushList(idx.toString())
-      elements.push(
-        <h3 key={idx} className="text-base font-bold text-white mt-2.5 mb-1.5">
-          {renderInlineStyles(trimmed.slice(4), isStreamingMessage && isLastBlock && isLastLine)}
-        </h3>
-      )
-    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      if (currentListType !== 'ul') {
-        flushList(idx.toString())
-        currentListType = 'ul'
-      }
-      currentList.push(
-        <li key={idx} className="leading-relaxed">
-          {renderInlineStyles(trimmed.slice(2), isStreamingMessage && isLastBlock && isLastLine)}
-        </li>
-      )
-    } else if (/^\d+\.\s/.test(trimmed)) {
-      if (currentListType !== 'ol') {
-        flushList(idx.toString())
-        currentListType = 'ol'
-      }
-      const content = trimmed.replace(/^\d+\.\s/, '')
-      currentList.push(
-        <li key={idx} className="leading-relaxed">
-          {renderInlineStyles(content, isStreamingMessage && isLastBlock && isLastLine)}
-        </li>
-      )
-    } else if (trimmed.startsWith('> ')) {
-      flushList(idx.toString())
-      elements.push(
-        <blockquote key={idx} className="border-l-2 border-[#ff7a17] pl-4 py-1 my-2 text-[#a1a1aa] italic bg-[#161616] rounded-r">
-          {renderInlineStyles(trimmed.slice(2), isStreamingMessage && isLastBlock && isLastLine)}
-        </blockquote>
-      )
-    } else {
-      if (trimmed === '') {
-        flushList(idx.toString())
-        elements.push(<div key={idx} className="h-2" />)
-      } else {
-        flushList(idx.toString())
-        elements.push(
-          <p key={idx} className="my-1.5 leading-relaxed text-[#dadbdf]">
-            {renderInlineStyles(trimmed, isStreamingMessage && isLastBlock && isLastLine)}
-          </p>
-        )
-      }
-    }
-  })
-
-  flushList('final')
-  return elements
-}
-
-const renderMessageContent = (content: string, isStreamingMessage: boolean) => {
-  const blocks = parseBlocks(content)
-  return (
-    <div className="space-y-1">
-      {blocks.map((block, idx) => {
-        const isLastBlock = idx === blocks.length - 1
-        if (block.type === 'code') {
-          return (
-            <CodeBlock
-              key={idx}
-              language={block.language}
-              content={block.content}
-            />
-          )
-        } else {
-          return (
-            <div key={idx}>
-              {renderTextBlock(block.content, isStreamingMessage, isLastBlock)}
-            </div>
-          )
-        }
-      })}
-    </div>
-  )
-}
 
 function AIWaveLoader() {
   return (
@@ -421,7 +218,47 @@ export default function ChatInterface({ messages, streamingMessageId }: ChatInte
                     ? <div className="whitespace-pre-wrap">{message.content}</div>
                     : message.content === ''
                       ? <ThinkingIndicator />
-                      : renderMessageContent(message.content, isStreaming)
+                      : (
+                        <div className="prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mt-6 mb-4" {...props} />,
+                              h2: ({node, ...props}) => <h2 className="text-lg font-bold text-white mt-5 mb-3" {...props} />,
+                              h3: ({node, ...props}) => <h3 className="text-base font-bold text-white mt-4 mb-2" {...props} />,
+                              p: ({node, ...props}) => <p className="mb-4 text-[#dadbdf] leading-relaxed text-sm" {...props} />,
+                              ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-2 mb-4 text-[#dadbdf] text-sm" {...props} />,
+                              ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-2 mb-4 text-[#dadbdf] text-sm" {...props} />,
+                              li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-semibold text-white" {...props} />,
+                              em: ({node, ...props}) => <em className="italic text-[#dadbdf]" {...props} />,
+                              blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-[#ff7a17] pl-4 py-2 my-4 text-[#a1a1aa] italic bg-[#161616] rounded-r text-sm" {...props} />,
+                              table: ({node, ...props}) => (
+                                <div className="overflow-x-auto my-6">
+                                  <table className="w-full text-left border-collapse text-sm text-[#dadbdf]" {...props} />
+                                </div>
+                              ),
+                              thead: ({node, ...props}) => <thead className="bg-[#1a1c20]" {...props} />,
+                              th: ({node, ...props}) => <th className="px-4 py-3 border border-[#212327] font-semibold text-white" {...props} />,
+                              td: ({node, ...props}) => <td className="px-4 py-3 border border-[#212327]" {...props} />,
+                              hr: ({node, ...props}) => <hr className="my-6 border-[#212327]" {...props} />,
+                              code(props) {
+                                const {children, className, node, ...rest} = props
+                                const match = /language-(\w+)/.exec(className || '')
+                                return match ? (
+                                  <CodeBlock language={match[1]} content={String(children).replace(/\n$/, '')} />
+                                ) : (
+                                  <code {...rest} className="px-1.5 py-0.5 mx-0.5 rounded bg-[#202020] border border-[#2d2d2d] text-[#ffc285] font-mono text-[13px] align-middle">
+                                    {children}
+                                  </code>
+                                )
+                              }
+                            }}
+                          >
+                            {message.content + (isStreaming ? '\n\n▍' : '')}
+                          </ReactMarkdown>
+                        </div>
+                      )
                   }
                 </div>
               </div>

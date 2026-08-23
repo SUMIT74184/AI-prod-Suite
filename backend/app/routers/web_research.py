@@ -24,6 +24,8 @@ Why SSE instead of WebSocket?
 
 import json
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from fastapi import APIRouter
@@ -88,7 +90,12 @@ def run_web_research(request: WebResearchRequest) -> WebResearchResponse:
 # ---------------------------------------------------------------------------
 
 @router.get("/stream")
-def stream_web_research(query: str) -> StreamingResponse:
+async def stream_web_research(
+    query: str,
+    session_id: Optional[str] = None,
+    user_id: str = "demo-user",
+    module: str = "web-research-agent"
+) -> StreamingResponse:
     """
     Run the Web Research Agent and stream progress updates via SSE.
 
@@ -103,41 +110,87 @@ def stream_web_research(query: str) -> StreamingResponse:
 
     Query parameter:
         query: The research topic (URL-encoded string)
+        session_id: Optional UUID to save the conversation history
+        user_id: User identifier for DB saving
+        module: Module name for DB saving
 
     Note: The final report is NOT included in stream events (too large).
     After status="complete", the frontend should call POST /run to get
     the full report, OR we store it server-side (future enhancement).
     """
-    logger.info("SSE stream requested for query: '%s'", query)
+    logger.info("SSE stream requested for query: '%s', session_id: %s", query, session_id)
 
-    def event_generator():
-        """
-        Generator that yields SSE-formatted strings.
+    async def event_generator():
+        q = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+        
+        # We need a place to store the final result in the closure
+        final_result_data = {}
 
-        Runs the agent ONCE via stream_agent(), which itself calls
-        compiled_graph.stream(). After all nodes complete, runner.py
-        yields a final "complete" event that includes the full report,
-        sources, and sub_queries — so the frontend does NOT need to
-        make a second /run call.
-        """
-        try:
-            for update in stream_agent(query):
+        def worker():
+            try:
+                for update in stream_agent(query):
+                    # Keep track of the final data payload if it's the "complete" step
+                    if update.get("status") == "complete" and "data" in update:
+                        final_result_data.update(update["data"])
+                    asyncio.run_coroutine_threadsafe(q.put(update), loop)
+                asyncio.run_coroutine_threadsafe(q.put(None), loop)
+            except Exception as exc:
+                asyncio.run_coroutine_threadsafe(q.put(exc), loop)
+
+        executor = ThreadPoolExecutor(max_workers=1)
+        # We don't await the worker, we let it run in the background
+        loop.run_in_executor(executor, worker)
+
+        # Yield an initial ping so the client receives HTTP headers immediately
+        yield ": ping\n\n"
+
+        while True:
+            try:
+                # Wait for the next item, but timeout every 15 seconds to send a ping
+                item = await asyncio.wait_for(q.get(), timeout=15.0)
+                
+                if item is None:
+                    # Stream finished successfully, save to DB
+                    if session_id and final_result_data:
+                        try:
+                            from app.core.database import get_session, create_session, add_message
+                            db_session = get_session(session_id)
+                            if not db_session:
+                                title = query[:40] + ("..." if len(query) > 40 else "")
+                                create_session(session_id, user_id, title, module)
+                            
+                            add_message(session_id, "user", query)
+                            # Serialize the final data (report, sources, sub_queries, iteration) as JSON
+                            # so the frontend can reconstruct the state
+                            add_message(session_id, "assistant", json.dumps(final_result_data))
+                        except Exception as exc:
+                            logger.error("Failed to persist web research to DB: %s", exc)
+                    break
+                
+                if isinstance(item, Exception):
+                    error_event = json.dumps({
+                        "status": "error",
+                        "message": str(item),
+                        "data": {},
+                    })
+                    yield f"data: {error_event}\n\n"
+                    break
+
                 # SSE format: "data: <json>\n\n"
-                json_str = json.dumps(update)
+                json_str = json.dumps(item)
                 yield f"data: {json_str}\n\n"
-        except Exception as exc:
-            error_event = json.dumps({
-                "status": "error",
-                "message": str(exc),
-                "data": {},
-            })
-            yield f"data: {error_event}\n\n"
+            
+            except asyncio.TimeoutError:
+                # Send a comment (ping) to keep the Next.js proxy / browser socket alive
+                yield ": ping\n\n"
 
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",   # Disable nginx buffering for SSE
         },
     )

@@ -137,6 +137,17 @@ def create_session(session_id: str, user_id: str, title: str, module: str):
     conn.commit()
     conn.close()
 
+def update_session_title(session_id: str, title: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE sessions SET title = ? WHERE id = ?",
+        (title, session_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
 def add_message(session_id: str, role: str, content: str, msg_id: str = None):
     if not msg_id:
         msg_id = str(uuid.uuid4())

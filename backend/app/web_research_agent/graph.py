@@ -32,7 +32,7 @@ import logging
 from langgraph.graph import StateGraph, END
 
 from app.web_research_agent.state import AgentState
-from app.web_research_agent.nodes import (
+from app.web_research_agent.nodes import (  # noqa: from nodes/ sub-package
     plan_node,
     search_node,
     read_node,
