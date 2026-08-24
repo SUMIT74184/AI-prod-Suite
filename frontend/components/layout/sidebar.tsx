@@ -159,9 +159,9 @@ export default function Sidebar() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-[#212327]">
         {!isCollapsed && (
-          <Link href="/" className="text-[15px] font-normal text-white flex items-center gap-2.5 tracking-tight hover:opacity-80 transition-opacity">
-            <Brain className="w-5 h-5" />
-            AI Suite
+          <Link href="/" className="text-[15px] font-medium text-white flex items-center gap-2.5 tracking-tight hover:opacity-80 transition-opacity">
+            <img src="/ProdSuite.png" alt="ProdSuite Logo" className="w-6 h-6 rounded object-cover" />
+            ProdSuite
           </Link>
         )}
         <button

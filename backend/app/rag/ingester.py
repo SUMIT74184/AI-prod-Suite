@@ -210,7 +210,7 @@ def _fetch_youtube_transcript(video_id: str) -> str:
     """Fetch and join the transcript for a YouTube video."""
     from youtube_transcript_api import YouTubeTranscriptApi
 
-    transcript_segments = YouTubeTranscriptApi.get_transcript(video_id)
+    transcript_segments = YouTubeTranscriptApi.get_transcript(video_id)  # type: ignore
     # Each segment is {'text': ..., 'start': ..., 'duration': ...}
     return " ".join(seg["text"] for seg in transcript_segments)
 

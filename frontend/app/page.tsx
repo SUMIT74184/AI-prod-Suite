@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { Brain, Code2, Lightbulb, Search, Workflow, ArrowRight } from 'lucide-react';
+import { Brain, Code2, Lightbulb, Search, Workflow, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen text-white selection:bg-white/20">
+    <div className="relative min-h-screen text-white selection:bg-white/20 font-sans">
 
       {/* Background video */}
       <video
@@ -17,149 +17,152 @@ export default function LandingPage() {
         <source src="/no_watermakr_space.mp4" type="video/mp4" />
       </video>
 
-      {/* Dark overlay for text readability */}
+      {/* Dark overlay for text readability & glassmorphism contrast */}
       <div
         className="fixed inset-0 z-[1]"
         style={{
-          background: 'linear-gradient(to bottom, rgba(10, 10, 10, 0.78) 0%, rgba(10, 10, 10, 0.92) 60%, rgba(10, 10, 10, 0.97) 100%)',
+          background: 'radial-gradient(circle at 50% 0%, rgba(10, 10, 10, 0.4) 0%, rgba(10, 10, 10, 0.85) 60%, rgba(5, 5, 5, 0.95) 100%)',
         }}
       />
 
       {/* Nav bar */}
-      <nav className="relative z-[2] border-b border-[#212327] px-6 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Brain className="w-5 h-5 text-white" />
-            <span className="text-[15px] font-normal tracking-tight">AI Suite</span>
-          </div>
+      <nav className="relative z-[2] border-b border-white/10 bg-black/20 backdrop-blur-md px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <img src="/ProdSuite.png" alt="ProdSuite Logo" className="w-8 h-8 rounded shadow-lg border border-white/10 object-cover" />
+            <span className="text-lg font-medium tracking-wide">ProdSuite</span>
+          </div>
+          <div className="flex items-center gap-4">
             <Link
               href="/sign-in"
-              className="xai-btn-outline inline-flex items-center gap-2 px-4 py-1.5"
+              className="text-sm text-gray-300 hover:text-white transition-colors"
             >
               Sign In
             </Link>
             <Link
               href="/sign-up"
-              className="xai-btn-primary inline-flex items-center gap-2 px-4 py-1.5"
+              className="group relative inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-white/10 border border-white/20 rounded-full overflow-hidden transition-all hover:bg-white/20 hover:scale-105"
             >
-              Get Started
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>Get Started</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>
       </nav>
 
-      <main className="relative z-[2] max-w-5xl mx-auto px-6 py-16 md:py-24">
+      <main className="relative z-[2] max-w-7xl mx-auto px-6 py-20 md:py-32">
         
         {/* Hero section */}
-        <header className="mb-20 md:mb-28">
-          <p className="xai-caption-mono text-[#7d8187] mb-6">
-            AI Productivity Suite
-          </p>
-          <h1 className="xai-display-md md:xai-display-lg text-white mb-6 max-w-3xl">
-            What are we working on today?
+        <header className="mb-24 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono mb-8 backdrop-blur-sm animate-pulse">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>ProdSuite 2.0 is live</span>
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 mb-8 max-w-4xl">
+            Your Ultimate Developer Ecosystem
           </h1>
-          <p className="xai-body-lg text-[#dadbdf] max-w-2xl">
-            Select a module below to jump right in. Your recent projects and workflows are ready when you are.
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl font-light leading-relaxed">
+            Unify your workflow. From deep web research and code reviews to advanced prompt engineering, ProdSuite integrates all your AI tools into one seamless glassmorphic canvas.
           </p>
         </header>
 
-        {/* Module Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+        {/* Bento Box Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Research Assistant - Featured */}
+          {/* Research Assistant - Large Hero Card */}
           <Link 
             href="/modules/research-assistant"
-            className="group md:col-span-2 md:row-span-2 xai-card p-8 transition-all duration-300 hover:border-[rgba(255,255,255,0.25)] flex flex-col justify-between min-h-[320px] xai-animate-in opacity-0 xai-delay-1"
+            className="group md:col-span-2 md:row-span-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all duration-500 flex flex-col justify-between overflow-hidden relative"
           >
-            <div>
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-5">Research</p>
-              <div className="w-10 h-10 rounded-lg bg-[#1a1c20] border border-[#212327] flex items-center justify-center mb-6">
-                <Brain className="w-5 h-5 text-white" />
+            {/* Ambient Glow */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/20 rounded-full blur-[80px] group-hover:bg-blue-500/30 transition-colors" />
+            
+            <div className="relative z-10">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-8 shadow-lg">
+                <Brain className="w-6 h-6 text-white" />
               </div>
-              <h2 className="xai-display-xs text-white mb-3">Research Assistant</h2>
-              <p className="xai-body-md text-[#dadbdf] max-w-md">
+              <h2 className="text-3xl font-semibold text-white mb-4">Research Assistant</h2>
+              <p className="text-gray-400 text-lg max-w-md leading-relaxed">
                 Your primary workspace for synthesizing documents, deep-diving into complex topics, and organizing knowledge intuitively.
               </p>
             </div>
-            <div className="mt-8">
-              <span className="xai-btn-outline inline-flex items-center gap-2 px-5 py-2 group-hover:border-[rgba(255,255,255,0.5)]">
+            <div className="mt-12 relative z-10">
+              <span className="inline-flex items-center gap-2 text-white font-medium border-b border-transparent group-hover:border-white transition-colors pb-1">
                 Open Workspace
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
-            </div>
-          </Link>
-
-          {/* Code Reviewer */}
-          <Link 
-            href="/modules/code-reviewer"
-            className="group xai-card p-6 transition-all duration-300 hover:border-[rgba(255,255,255,0.25)] flex flex-col justify-between min-h-[150px] xai-animate-in opacity-0 xai-delay-2"
-          >
-            <div>
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-4">Code</p>
-              <div className="w-9 h-9 rounded-lg bg-[#1a1c20] border border-[#212327] flex items-center justify-center mb-4">
-                <Code2 className="w-4 h-4 text-white" />
-              </div>
-              <h3 className="text-[17px] font-normal text-white mb-1.5">Code Review</h3>
-              <p className="text-sm text-[#7d8187]">Analyze & optimize code structure</p>
             </div>
           </Link>
 
           {/* Prompt Playground */}
           <Link 
             href="/modules/prompt-playground"
-            className="group xai-card p-6 transition-all duration-300 hover:border-[rgba(255,255,255,0.25)] flex flex-col justify-between min-h-[150px] xai-animate-in opacity-0 xai-delay-3"
+            className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 flex flex-col justify-between relative overflow-hidden"
           >
-            <div>
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-4">Prompts</p>
-              <div className="w-9 h-9 rounded-lg bg-[#1a1c20] border border-[#212327] flex items-center justify-center mb-4">
-                <Lightbulb className="w-4 h-4 text-white" />
+            <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-emerald-500/10 rounded-full blur-[50px] group-hover:bg-emerald-500/20 transition-colors" />
+            <div className="relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center mb-6 backdrop-blur-md">
+                <Lightbulb className="w-5 h-5 text-emerald-400" />
               </div>
-              <h3 className="text-[17px] font-normal text-white mb-1.5">Playground</h3>
-              <p className="text-sm text-[#7d8187]">Test & iterate system prompts</p>
+              <h3 className="text-xl font-medium text-white mb-2">Prompt Playground</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">Design, test, and iterate on complex system prompts with real-time SSE streaming and multi-model comparison.</p>
+            </div>
+          </Link>
+
+          {/* Code Reviewer */}
+          <Link 
+            href="/modules/code-reviewer"
+            className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 flex flex-col justify-between relative overflow-hidden"
+          >
+            <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-orange-500/10 rounded-full blur-[50px] group-hover:bg-orange-500/20 transition-colors" />
+            <div className="relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center mb-6 backdrop-blur-md">
+                <Code2 className="w-5 h-5 text-orange-400" />
+              </div>
+              <h3 className="text-xl font-medium text-white mb-2">Code Reviewer</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">Automate PR checks and analyze codebase architecture for vulnerabilities and optimizations.</p>
             </div>
           </Link>
 
           {/* Web Research Agent */}
           <Link 
             href="/modules/web-research-agent"
-            className="group md:col-span-2 xai-card p-6 transition-all duration-300 hover:border-[rgba(255,255,255,0.25)] flex items-center justify-between xai-animate-in opacity-0 xai-delay-4"
+            className="group md:col-span-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 flex flex-col justify-center relative overflow-hidden"
           >
-            <div className="flex items-center gap-5">
-              <div className="w-12 h-12 rounded-lg bg-[#1a1c20] border border-[#212327] flex items-center justify-center shrink-0">
-                <Search className="w-5 h-5 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+            <div className="relative z-10 flex items-center gap-6">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 backdrop-blur-md">
+                <Search className="w-7 h-7 text-cyan-400" />
               </div>
               <div>
-                <h3 className="text-lg font-normal text-white mb-1">Web Research</h3>
-                <p className="text-sm text-[#7d8187]">Deploy agents to scour the web and compile reports automatically.</p>
+                <h3 className="text-2xl font-medium text-white mb-2">Web Research Agents</h3>
+                <p className="text-gray-400">Deploy LangGraph-powered autonomous agents to scour the web, synthesize findings, and compile comprehensive reports entirely in the background.</p>
               </div>
             </div>
-            <ArrowRight className="w-5 h-5 text-[#7d8187] opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all hidden sm:block mr-2" />
           </Link>
 
           {/* Workflow Automation */}
           <Link 
             href="/modules/workflow-automation"
-            className="group xai-card p-6 transition-all duration-300 hover:border-[rgba(255,255,255,0.25)] flex flex-col justify-between min-h-[150px] xai-animate-in opacity-0 xai-delay-5"
+            className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 flex flex-col justify-between relative overflow-hidden"
           >
-            <div>
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-4">Automation</p>
-              <div className="w-9 h-9 rounded-lg bg-[#1a1c20] border border-[#212327] flex items-center justify-center mb-4">
-                <Workflow className="w-4 h-4 text-white" />
+             <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-pink-500/10 rounded-full blur-[50px] group-hover:bg-pink-500/20 transition-colors" />
+            <div className="relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center mb-6 backdrop-blur-md">
+                <Workflow className="w-5 h-5 text-pink-400" />
               </div>
-              <h3 className="text-[17px] font-normal text-white mb-1.5">Workflows</h3>
-              <p className="text-sm text-[#7d8187]">Chain agents together</p>
+              <h3 className="text-xl font-medium text-white mb-2">Automations</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">Chain your favorite AI agents together into powerful, recurring pipelines.</p>
             </div>
           </Link>
           
         </div>
         
         {/* Footer hint */}
-        <div className="mt-20 text-center">
-          <p className="xai-caption-mono-sm text-[#7d8187] flex items-center justify-center gap-3">
+        <div className="mt-24 text-center relative z-10">
+          <p className="text-gray-500 flex items-center justify-center gap-3 text-sm">
             <span>
-              Press <kbd className="px-2 py-1 mx-1 bg-[#1a1c20] rounded text-xs font-mono border border-[#212327]">⌘ + K</kbd> to search across all modules
+              Press <kbd className="px-2 py-1 mx-1 bg-white/5 rounded-md text-xs font-mono border border-white/10 text-gray-300 shadow-inner">⌘ + K</kbd> to search across ProdSuite
             </span>
           </p>
         </div>
@@ -167,10 +170,10 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-[2] border-t border-[#212327] px-6 py-8">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <p className="xai-body-sm text-[#7d8187]">AI Productivity Suite</p>
-          <p className="xai-caption-mono-sm text-[#7d8187]">Built with precision</p>
+      <footer className="relative z-[2] border-t border-white/10 bg-black/40 backdrop-blur-xl px-6 py-8 mt-12">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <p className="text-sm text-gray-500">ProdSuite</p>
+          <p className="text-xs font-mono text-gray-600 uppercase tracking-widest">Built with precision</p>
         </div>
       </footer>
     </div>

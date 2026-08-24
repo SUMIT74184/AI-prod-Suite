@@ -314,6 +314,14 @@
     animation: xai-fade-in 0.5s ease-out forwards;
   }
 
+  /* Shimmer animation for Glassmorphic cards */
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+  .animate-shimmer {
+    animation: shimmer 1.5s infinite;
+  }
+
   /* Stagger delays */
   .xai-delay-1 { animation-delay: 100ms; }
   .xai-delay-2 { animation-delay: 200ms; }

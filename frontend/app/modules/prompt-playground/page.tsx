@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 export const dynamic = 'force-dynamic'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { Loader2, Copy, Save, Search, Play, Settings2, History, Code2, Plus, Trash2, ArrowRight } from 'lucide-react'
+import { Loader2, Copy, Save, Search, Play, Settings2, History, Code2, Plus, Trash2, ArrowRight, Heart, GitBranch, X, AlertCircle, CheckCircle2, Filter } from 'lucide-react'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -31,6 +31,7 @@ interface SavedPrompt {
   system_prompt?: string
   user_prompt?: string
   latest_version: number
+  is_favorite?: boolean
 }
 
 interface RunHistoryItem {
@@ -93,11 +94,41 @@ export default function PromptPlaygroundPage() {
   const [history, setHistory] = useState<RunHistoryItem[]>([])
   const [loadingPrompts, setLoadingPrompts] = useState(true)
 
+  // New feature states
+  const [topP, setTopP] = useState('1.0')
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; visible: boolean }>({ message: '', type: 'success', visible: false })
+  const toastTimeout = useRef<NodeJS.Timeout | null>(null)
+  const [historyFilterByPrompt, setHistoryFilterByPrompt] = useState(false)
+
   // Fetch prompts on mount
   useEffect(() => {
     fetchPrompts()
     fetchHistory()
   }, [])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (!isExecuting && (systemPrompt || userPrompt)) handleExecute()
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        handleSavePrompt()
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault()
+        handleNewPrompt()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current)
+    setToast({ message, type, visible: true })
+    toastTimeout.current = setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 4000)
+  }
 
   const fetchPrompts = async () => {
     try {
@@ -117,9 +148,13 @@ export default function PromptPlaygroundPage() {
     }
   }
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (filterByPrompt?: boolean) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/history`)
+      const useFilter = filterByPrompt ?? historyFilterByPrompt
+      const url = useFilter && activePromptId
+        ? `${API_BASE_URL}/api/py/prompt-playground/history?prompt_id=${activePromptId}`
+        : `${API_BASE_URL}/api/py/prompt-playground/history`
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setHistory(data)
@@ -160,10 +195,85 @@ export default function PromptPlaygroundPage() {
     setMetrics2({ latency: 0, inputTokens: 0, outputTokens: 0, cost: 0 })
   }
 
+  const handleDeletePrompt = async (promptId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Delete this prompt and all its versions?')) return
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/prompts/${promptId}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        if (activePromptId === promptId) handleNewPrompt()
+        fetchPrompts()
+        fetchHistory()
+        showToast('Prompt deleted', 'success')
+      }
+    } catch (err) {
+      showToast('Failed to delete prompt', 'error')
+    }
+  }
+
+  const handleUpdatePromptMeta = async (promptId: string, updates: { name?: string; section?: string; tags?: string[]; is_favorite?: boolean }) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/prompts/${promptId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      if (res.ok) fetchPrompts()
+    } catch (err) {
+      showToast('Failed to update prompt', 'error')
+    }
+  }
+
+  const handleToggleFavorite = async (promptId: string, currentFav: boolean, e: React.MouseEvent) => {
+    e.stopPropagation()
+    await handleUpdatePromptMeta(promptId, { is_favorite: !currentFav })
+  }
+
+  const handleClonePrompt = async () => {
+    if (!activePromptId) return
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/prompts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `Copy of ${promptName}`,
+          section: 'My Prompts',
+          tags: ['Cloned'],
+          system_prompt: systemPrompt,
+          user_prompt: userPrompt,
+          default_provider: provider1,
+          default_model: model1,
+        })
+      })
+      if (res.ok) {
+        const newPrompt = await res.json()
+        fetchPrompts()
+        setActivePromptId(newPrompt.id)
+        setPromptName(`Copy of ${promptName}`)
+        showToast('Prompt cloned', 'success')
+      }
+    } catch (err) {
+      showToast('Failed to clone prompt', 'error')
+    }
+  }
+
+  const handleReplayHistory = (run: RunHistoryItem) => {
+    handleModelSelect(run.model, 1)
+    setOutput1(run.output_text || '')
+    setMetrics1({
+      latency: run.latency_ms / 1000,
+      inputTokens: run.input_tokens,
+      outputTokens: run.output_tokens,
+      cost: run.estimated_cost_usd
+    })
+    showToast(`Loaded run from ${run.provider} • ${run.model}`, 'success')
+  }
+
   const handleSavePrompt = async () => {
     try {
       if (activePromptId) {
-        // Save new version
         const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/prompts/${activePromptId}/versions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -176,9 +286,9 @@ export default function PromptPlaygroundPage() {
         })
         if (res.ok) {
           fetchPrompts()
+          showToast('Version saved', 'success')
         }
       } else {
-        // Create new prompt
         const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/prompts`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -196,10 +306,11 @@ export default function PromptPlaygroundPage() {
           const newPrompt = await res.json()
           fetchPrompts()
           setActivePromptId(newPrompt.id)
+          showToast('Prompt created', 'success')
         }
       }
     } catch (err) {
-      console.error('Error saving prompt:', err)
+      showToast('Failed to save prompt', 'error')
     }
   }
 
@@ -220,26 +331,55 @@ export default function PromptPlaygroundPage() {
             model: model1,
             temperature: parseFloat(temperature),
             max_tokens: parseInt(maxTokens, 10),
+            top_p: parseFloat(topP),
             json_mode: isSchemaEnabled,
             json_schema: isSchemaEnabled ? jsonSchema : undefined,
           }
         }
 
-        const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/execute`, {
+        const res = await fetch(`${API_BASE_URL}/api/py/prompt-playground/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         })
 
-        if (res.ok) {
-          const data = await res.json()
-          setOutput1(data.output_text)
-          setMetrics1({
-            latency: data.metrics.latency_ms / 1000,
-            inputTokens: data.metrics.input_tokens,
-            outputTokens: data.metrics.output_tokens,
-            cost: data.metrics.estimated_cost_usd
-          })
+        if (res.ok && res.body) {
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let done = false
+          while (!done) {
+            const { value, done: doneReading } = await reader.read()
+            done = doneReading
+            if (value) {
+              const chunk = decoder.decode(value, { stream: true })
+              const events = chunk.split('\n\n')
+              for (const event of events) {
+                if (event.startsWith('data: ')) {
+                  const dataStr = event.slice(6)
+                  if (dataStr === '[DONE]') break
+                  try {
+                    const parsed = JSON.parse(dataStr)
+                    if (parsed.type === 'token') {
+                      setOutput1(prev => prev + parsed.content)
+                    } else if (parsed.type === 'metrics') {
+                      setMetrics1({
+                        latency: parsed.latency_ms / 1000,
+                        inputTokens: parsed.input_tokens,
+                        outputTokens: parsed.output_tokens,
+                        cost: parsed.estimated_cost_usd
+                      })
+                    } else if (parsed.type === 'error') {
+                      showToast(parsed.message, 'error')
+                    }
+                  } catch (e) {
+                    // Ignore parse errors from partial chunks
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          showToast('Failed to execute prompt', 'error')
         }
       } else {
         // Compare Mode across multiple models
@@ -326,10 +466,22 @@ export default function PromptPlaygroundPage() {
   }
 
   return (
-    <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden">
+    <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden relative">
+      {/* Toast Notification */}
+      <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${toast.visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg border text-sm font-medium ${
+          toast.type === 'success' ? 'bg-[#1a1c20] border-green-500/20 text-green-400' : 'bg-[#1a1c20] border-red-500/20 text-red-400'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.message}
+          <button onClick={() => setToast(p => ({ ...p, visible: false }))} className="ml-2 text-[#7d8187] hover:text-white">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
       
       {/* LEFT SIDEBAR: Library */}
-      <div className="w-72 border-r border-[#212327] flex flex-col bg-[#0a0a0a]">
+      <div className="w-64 border-r border-[#212327] flex flex-col bg-[#0a0a0a] shrink-0">
         <div className="p-4 border-b border-[#212327]">
           <h2 className="font-mono text-[14px] tracking-[1.4px] uppercase text-white mb-4">Library</h2>
           <div className="relative">
@@ -363,20 +515,41 @@ export default function PromptPlaygroundPage() {
                     <AccordionContent className="pb-1">
                       <div className="space-y-1 mt-1">
                         {sectionPrompts.map(prompt => (
-                          <button
+                          <div
                             key={prompt.id}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => handleLoadPrompt(prompt)}
-                            className={`w-full text-left p-3 rounded-sm transition-colors flex flex-col gap-2 ${
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLoadPrompt(prompt) }}
+                            className={`group/card w-full text-left p-3 rounded-sm transition-colors flex flex-col gap-2 cursor-pointer ${
                               activePromptId === prompt.id ? 'bg-[#1a1c20] border border-[#212327]' : 'hover:bg-[#1a1c20] border border-transparent'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <span className="text-sm font-medium leading-tight">{prompt.name}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-sm uppercase font-mono tracking-wider ${
-                                prompt.status === 'Published' ? 'bg-[#1a1c20] text-[#7d8187] border border-[#212327]' : 'bg-[#ff7a17]/10 text-[#ff7a17] border border-[#ff7a17]/20'
-                              }`}>
-                                {prompt.status}
-                              </span>
+                              <span className="text-sm font-medium leading-tight flex-1">{prompt.name}</span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm uppercase font-mono tracking-wider ${
+                                  prompt.status === 'Published' ? 'bg-[#1a1c20] text-[#7d8187] border border-[#212327]' : 'bg-[#ff7a17]/10 text-[#ff7a17] border border-[#ff7a17]/20'
+                                }`}>
+                                  {prompt.status}
+                                </span>
+                                <button
+                                  onClick={(e) => handleToggleFavorite(prompt.id, !!prompt.is_favorite, e)}
+                                  className={`opacity-0 group-hover/card:opacity-100 transition-opacity p-1 rounded-sm hover:bg-[#1a1c20] ${
+                                    prompt.is_favorite ? 'text-pink-500 opacity-100' : 'text-[#7d8187] hover:text-pink-400'
+                                  }`}
+                                  title={prompt.is_favorite ? "Remove favorite" : "Add to favorites"}
+                                >
+                                  <Heart className={`w-3 h-3 ${prompt.is_favorite ? 'fill-current' : ''}`} />
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeletePrompt(prompt.id, e)}
+                                  className="opacity-0 group-hover/card:opacity-100 transition-opacity p-1 rounded-sm hover:bg-red-500/20 text-[#7d8187] hover:text-red-400"
+                                  title="Delete prompt"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {prompt.tags && prompt.tags.map(tag => (
@@ -385,7 +558,7 @@ export default function PromptPlaygroundPage() {
                                 </span>
                               ))}
                             </div>
-                          </button>
+                          </div>
                         ))}
                         {sectionPrompts.length === 0 && (
                           <div className="px-2 py-3 text-xs text-[#7d8187] italic">No prompts found</div>
@@ -413,71 +586,92 @@ export default function PromptPlaygroundPage() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="h-16 border-b border-[#212327] flex items-center justify-between px-6 bg-[#0a0a0a]">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1 min-w-0 mr-4">
             <input 
               type="text"
               value={promptName}
               onChange={e => setPromptName(e.target.value)}
-              className="text-lg font-normal bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-[#7d8187] rounded px-1 text-white"
+              onBlur={() => {
+                if (activePromptId && promptName.trim()) {
+                  handleUpdatePromptMeta(activePromptId, { name: promptName.trim() })
+                }
+              }}
+              className="text-lg font-normal bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-[#7d8187] rounded px-1 text-white w-full min-w-0 truncate"
             />
             {activePromptId && (
-              <span className="text-xs font-mono text-[#7d8187]">
-                v{prompts.find(p => p.id === activePromptId)?.latest_version || 1}
+              <span className="text-xs text-[#7d8187] font-mono tracking-wider shrink-0 whitespace-nowrap">
+                VERSION {prompts.find(p => p.id === activePromptId)?.latest_version || 1}
               </span>
             )}
           </div>
           
-          <div className="flex items-center bg-[#1a1c20] p-1 rounded-full border border-[#212327]">
-            <button 
-              onClick={() => setMode('single')}
-              className={`px-4 py-1.5 text-sm rounded-full transition-colors ${mode === 'single' ? 'bg-[#363a3f] text-white' : 'text-[#7d8187] hover:text-white'}`}
-            >
-              Single Run
-            </button>
-            <button 
-              onClick={() => setMode('compare')}
-              className={`px-4 py-1.5 text-sm rounded-full transition-colors ${mode === 'compare' ? 'bg-[#363a3f] text-white' : 'text-[#7d8187] hover:text-white'}`}
-            >
-              Compare
-            </button>
+          <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#7d8187] mr-2 whitespace-nowrap hidden xl:inline">⌘S to Save</span>
+              {activePromptId && (
+                <Button variant="outline" size="sm" onClick={handleClonePrompt} className="bg-transparent border-[#212327] hover:bg-[#1a1c20] hover:text-white h-8 shrink-0">
+                  <GitBranch className="w-4 h-4 mr-2" /> Clone
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleSavePrompt} className="bg-transparent border-[#212327] hover:bg-[#1a1c20] hover:text-white h-8 shrink-0">
+                <Save className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">{activePromptId ? 'Save Version' : 'Save Draft'}</span><span className="sm:hidden">Save</span>
+              </Button>
+            </div>
+
+            <div className="flex items-center bg-[#1a1c20] p-1 rounded-full border border-[#212327] shrink-0">
+              <button 
+                onClick={() => setMode('single')}
+                className={`px-3 py-1.5 text-xs rounded-full transition-colors whitespace-nowrap ${mode === 'single' ? 'bg-[#363a3f] text-white' : 'text-[#7d8187] hover:text-white'}`}
+              >
+                Single Run
+              </button>
+              <button 
+                onClick={() => setMode('compare')}
+                className={`px-3 py-1.5 text-xs rounded-full transition-colors whitespace-nowrap ${mode === 'compare' ? 'bg-[#363a3f] text-white' : 'text-[#7d8187] hover:text-white'}`}
+              >
+                Compare
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Workspace Area */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
           
-          {/* Prompts Column */}
-          <div className="w-1/2 min-w-[400px] border-r border-[#212327] flex flex-col bg-[#0a0a0a] overflow-y-auto">
+          {/* TOP HALF: Prompts Column */}
+          <div className="flex-1 flex overflow-hidden bg-[#0a0a0a]">
             
-            {/* System Prompt */}
-            <div className="p-6 border-b border-[#212327] flex flex-col">
-              <div className="flex justify-between items-center mb-3">
-                <span className="font-mono text-[14px] tracking-[1.4px] uppercase text-[#7d8187]">System Prompt</span>
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              {/* System Prompt */}
+              <div className="p-6 border-b border-[#212327] flex flex-col">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-mono text-[14px] tracking-[1.4px] uppercase text-[#7d8187]">System Prompt</span>
+                </div>
+                <textarea
+                  value={systemPrompt}
+                  onChange={e => setSystemPrompt(e.target.value)}
+                  placeholder="You are a helpful assistant..."
+                  className="w-full h-32 bg-[#1a1c20] border border-[#212327] rounded-sm p-4 text-sm font-mono focus:outline-none focus:border-[#7d8187] resize-y placeholder:text-[#7d8187] text-white"
+                />
               </div>
-              <textarea
-                value={systemPrompt}
-                onChange={e => setSystemPrompt(e.target.value)}
-                placeholder="You are a helpful assistant..."
-                className="w-full h-32 bg-[#1a1c20] border border-[#212327] rounded-sm p-4 text-sm font-mono focus:outline-none focus:border-[#7d8187] resize-y placeholder:text-[#7d8187] text-white"
-              />
-            </div>
 
-            {/* User Prompt */}
-            <div className="p-6 border-b border-[#212327] flex flex-col flex-1">
-              <div className="flex justify-between items-center mb-3">
-                <span className="font-mono text-[14px] tracking-[1.4px] uppercase text-[#7d8187]">User Prompt</span>
+              {/* User Prompt */}
+              <div className="p-6 flex flex-col flex-1">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-mono text-[14px] tracking-[1.4px] uppercase text-[#7d8187]">User Prompt</span>
+                </div>
+                <textarea
+                  value={userPrompt}
+                  onChange={e => setUserPrompt(e.target.value)}
+                  placeholder="Enter your instructions here. Use {{variable}} syntax for dynamic inputs."
+                  className="w-full h-full min-h-[160px] bg-[#1a1c20] border border-[#212327] rounded-sm p-4 text-sm font-mono focus:outline-none focus:border-[#7d8187] resize-none placeholder:text-[#7d8187] text-white"
+                />
               </div>
-              <textarea
-                value={userPrompt}
-                onChange={e => setUserPrompt(e.target.value)}
-                placeholder="Enter your instructions here. Use {{variable}} syntax for dynamic inputs."
-                className="w-full h-full min-h-[200px] bg-[#1a1c20] border border-[#212327] rounded-sm p-4 text-sm font-mono focus:outline-none focus:border-[#7d8187] resize-none placeholder:text-[#7d8187] text-white"
-              />
             </div>
 
             {/* Variables */}
             {extractedVariables.length > 0 && (
-              <div className="p-6 bg-[#0a0a0a]">
+              <div className="w-1/3 min-w-[250px] border-l border-[#212327] p-6 bg-[#0a0a0a] overflow-y-auto">
                 <span className="font-mono text-[14px] tracking-[1.4px] uppercase text-[#7d8187] mb-4 block">Variables</span>
                 <div className="space-y-4">
                   {extractedVariables.map(v => (
@@ -497,7 +691,26 @@ export default function PromptPlaygroundPage() {
             )}
           </div>
 
-          {/* Outputs Column */}
+          {/* Middle Action Bar */}
+          <div className="h-14 border-y border-[#212327] flex items-center justify-between px-6 bg-[#0a0a0a] shrink-0">
+            <div className="flex items-center gap-4">
+               <span className="text-xs text-[#7d8187]">
+                 {extractedVariables.length > 0 ? `${extractedVariables.length} variable(s) detected` : 'Ready to execute'}
+               </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={handleExecute}
+                size="sm"
+                disabled={isExecuting || (!systemPrompt && !userPrompt)}
+                className="rounded-full bg-white text-black hover:bg-[#fafaf7] px-8 h-8"
+              >
+                {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4 mr-2" /> Run</>}
+              </Button>
+            </div>
+          </div>
+
+          {/* BOTTOM HALF: Outputs Column */}
           <div className={`flex-1 flex ${mode === 'compare' ? 'flex-row' : 'flex-col'} overflow-hidden bg-[#0a0a0a]`}>
             
             {/* Model 1 Output */}
@@ -526,10 +739,10 @@ export default function PromptPlaygroundPage() {
               </div>
               {/* Metrics 1 */}
               {output1 && !isExecuting && (
-                <div className="p-3 border-t border-[#212327] bg-[#1a1c20]/30 flex gap-4 text-[11px] font-mono text-[#7d8187]">
-                  <span>{metrics1.latency.toFixed(2)}s</span>
-                  <span>{metrics1.inputTokens} In / {metrics1.outputTokens} Out</span>
-                  <span>Est. ${metrics1.cost.toFixed(4)}</span>
+                <div className="p-3 border-t border-[#212327] bg-[#1a1c20]/30 flex flex-wrap gap-x-4 gap-y-2 text-[11px] font-mono text-[#7d8187]">
+                  <span className="whitespace-nowrap">{metrics1.latency.toFixed(2)}s</span>
+                  <span className="whitespace-nowrap">{metrics1.inputTokens} In / {metrics1.outputTokens} Out</span>
+                  <span className="whitespace-nowrap">Est. ${metrics1.cost.toFixed(4)}</span>
                 </div>
               )}
             </div>
@@ -561,40 +774,15 @@ export default function PromptPlaygroundPage() {
                 </div>
                 {/* Metrics 2 */}
                 {output2 && !isExecuting && (
-                  <div className="p-3 border-t border-[#212327] bg-[#1a1c20]/30 flex gap-4 text-[11px] font-mono text-[#7d8187]">
-                    <span>{metrics2.latency.toFixed(2)}s</span>
-                    <span>{metrics2.inputTokens} In / {metrics2.outputTokens} Out</span>
-                    <span>Est. ${metrics2.cost.toFixed(4)}</span>
+                  <div className="p-3 border-t border-[#212327] bg-[#1a1c20]/30 flex flex-wrap gap-x-4 gap-y-2 text-[11px] font-mono text-[#7d8187]">
+                    <span className="whitespace-nowrap">{metrics2.latency.toFixed(2)}s</span>
+                    <span className="whitespace-nowrap">{metrics2.inputTokens} In / {metrics2.outputTokens} Out</span>
+                    <span className="whitespace-nowrap">Est. ${metrics2.cost.toFixed(4)}</span>
                   </div>
                 )}
               </div>
             )}
 
-          </div>
-        </div>
-
-        {/* Global Action Bar */}
-        <div className="h-16 border-t border-[#212327] flex items-center justify-between px-6 bg-[#0a0a0a]">
-          <div className="flex items-center gap-4">
-             <span className="text-xs text-[#7d8187]">
-               {extractedVariables.length > 0 ? `${extractedVariables.length} variable(s) detected` : 'Ready to execute'}
-             </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              onClick={handleSavePrompt}
-              variant="outline" 
-              className="rounded-full bg-transparent border-[#212327] text-white hover:bg-[#1a1c20]"
-            >
-              <Save className="w-4 h-4 mr-2" /> Save Version
-            </Button>
-            <Button 
-              onClick={handleExecute}
-              disabled={isExecuting || (!systemPrompt && !userPrompt)}
-              className="rounded-full bg-white text-black hover:bg-[#fafaf7] px-8"
-            >
-              {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4 mr-2" /> Run</>}
-            </Button>
           </div>
         </div>
       </div>
@@ -640,6 +828,18 @@ export default function PromptPlaygroundPage() {
                   className="w-full accent-white"
                 />
               </div>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <label className="text-xs text-[#dadbdf]">Top P</label>
+                  <span className="text-xs text-[#7d8187] font-mono">{topP}</span>
+                </div>
+                <input 
+                  type="range" min="0" max="1" step="0.05" 
+                  value={topP} 
+                  onChange={e => setTopP(e.target.value)}
+                  className="w-full accent-white"
+                />
+              </div>
             </div>
           </TabsContent>
 
@@ -667,12 +867,30 @@ export default function PromptPlaygroundPage() {
           </TabsContent>
 
           <TabsContent value="history" className="flex-1 p-0 m-0 outline-none overflow-y-auto">
+             <div className="sticky top-0 bg-[#0a0a0a] p-3 border-b border-[#212327] flex justify-between items-center z-10">
+               <span className="text-xs text-[#7d8187]">Recent Runs</span>
+               <button 
+                 onClick={() => {
+                   setHistoryFilterByPrompt(!historyFilterByPrompt)
+                   fetchHistory(!historyFilterByPrompt)
+                 }}
+                 title="Filter by Active Prompt"
+                 className={`p-1.5 rounded-sm transition-colors ${historyFilterByPrompt ? 'bg-white text-black' : 'text-[#7d8187] hover:bg-[#1a1c20] hover:text-white'}`}
+               >
+                 <Filter className="w-3.5 h-3.5" />
+               </button>
+             </div>
              <div className="divide-y divide-[#212327]">
                {history.map(run => (
                  <div key={run.id} className="p-4 hover:bg-[#1a1c20] transition-colors cursor-pointer group">
                    <div className="flex justify-between items-start mb-2">
                      <span className="text-xs text-white">{run.provider} • {run.model}</span>
-                     <span className="text-[10px] text-[#7d8187] font-mono">{new Date(run.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                     <div className="flex items-center gap-2">
+                       <span className="text-[10px] text-[#7d8187] font-mono">{new Date(run.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                       <button onClick={(e) => { e.stopPropagation(); handleReplayHistory(run); }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[#212327] rounded-sm text-[#7d8187] hover:text-white transition-all">
+                         <Play className="w-3 h-3" />
+                       </button>
+                     </div>
                    </div>
                    <div className="flex gap-3 text-[11px] font-mono text-[#7d8187]">
                      <span className={run.status === 'Success' ? 'text-[#ff7a17]' : 'text-red-500'}>

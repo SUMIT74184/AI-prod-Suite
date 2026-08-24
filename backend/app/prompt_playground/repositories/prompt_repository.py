@@ -125,7 +125,7 @@ class PromptRepository:
         user_prompt: str,
         provider: str = "OpenAI",
         model: str = "GPT-4o"
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         p = PromptRepository.get_prompt_by_id(prompt_id)
         if not p:
             raise ValueError("Prompt not found")
@@ -153,6 +153,75 @@ class PromptRepository:
         conn.commit()
         conn.close()
         
+        return PromptRepository.get_prompt_by_id(prompt_id)
+
+    @staticmethod
+    def delete_prompt(prompt_id: str) -> bool:
+        """Delete a prompt and all its versions and run history (cascade)."""
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM prompts WHERE id = ?", (prompt_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return False
+
+        cursor.execute("DELETE FROM prompt_runs WHERE prompt_id = ?", (prompt_id,))
+        cursor.execute("DELETE FROM prompt_versions WHERE prompt_id = ?", (prompt_id,))
+        cursor.execute("DELETE FROM prompts WHERE id = ?", (prompt_id,))
+        conn.commit()
+        conn.close()
+        return True
+
+    @staticmethod
+    def update_prompt(
+        prompt_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        section: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        is_favorite: Optional[bool] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Partially update prompt metadata fields."""
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM prompts WHERE id = ?", (prompt_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return None
+
+        now = datetime.datetime.utcnow().isoformat()
+        updates = []
+        params = []
+
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        if section is not None:
+            updates.append("section = ?")
+            params.append(section)
+        if tags is not None:
+            updates.append("tags = ?")
+            params.append(json.dumps(tags))
+        if is_favorite is not None:
+            updates.append("is_favorite = ?")
+            params.append(1 if is_favorite else 0)
+
+        if not updates:
+            conn.close()
+            return PromptRepository.get_prompt_by_id(prompt_id)
+
+        updates.append("updated_at = ?")
+        params.append(now)
+        params.append(prompt_id)
+
+        sql = f"UPDATE prompts SET {', '.join(updates)} WHERE id = ?"
+        cursor.execute(sql, params)
+        conn.commit()
+        conn.close()
+
         return PromptRepository.get_prompt_by_id(prompt_id)
 
     @staticmethod

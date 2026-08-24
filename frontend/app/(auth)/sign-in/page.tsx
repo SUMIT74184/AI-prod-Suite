@@ -4,7 +4,7 @@ import { useState, FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
-import { Brain, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 
 function GoogleIcon() {
   return (
@@ -58,24 +58,33 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col selection:bg-white/20">
-      {/* Ambient grid */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)',
-          backgroundSize: '48px 48px',
-        }} />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] opacity-[0.04]"
-          style={{ background: 'radial-gradient(ellipse at center, #7c3aed 0%, transparent 70%)' }}
-        />
-      </div>
+    <div className="relative min-h-screen text-white selection:bg-white/20 font-sans flex flex-col">
+      {/* Background video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover z-0"
+        style={{ pointerEvents: 'none' }}
+      >
+        <source src="/no_watermakr_space.mp4" type="video/mp4" />
+      </video>
+
+      {/* Dark overlay for text readability & glassmorphism contrast */}
+      <div
+        className="fixed inset-0 z-[1]"
+        style={{
+          background: 'radial-gradient(circle at 50% 50%, rgba(10, 10, 10, 0.3) 0%, rgba(10, 10, 10, 0.85) 70%, rgba(5, 5, 5, 0.95) 100%)',
+        }}
+      />
 
       {/* Nav */}
-      <nav className="relative z-10 border-b border-[#212327] px-6 py-3">
-        <div className="max-w-6xl mx-auto flex items-center">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Brain className="w-5 h-5 text-white" />
-            <span className="text-[15px] font-normal tracking-tight text-white">AI Suite</span>
+      <nav className="relative z-10 border-b border-white/10 bg-black/20 backdrop-blur-md px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src="/ProdSuite.png" alt="ProdSuite Logo" className="w-8 h-8 rounded shadow-lg border border-white/10 object-cover" />
+            <span className="text-lg font-medium tracking-wide">ProdSuite</span>
           </Link>
         </div>
       </nav>
@@ -83,63 +92,72 @@ export default function SignInPage() {
       {/* Main */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-[420px] xai-animate-in opacity-0">
-          <div className="xai-auth-card">
-            <p className="xai-caption-mono text-[#7d8187] mb-3 text-center">Sign In</p>
-            <h1 className="xai-display-sm text-white text-center mb-2">Welcome back</h1>
-            <p className="xai-body-sm text-[#7d8187] text-center mb-8">Sign in to your account to continue</p>
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-[0_0_40px_rgba(255,255,255,0.05)] relative overflow-hidden">
+            {/* Ambient Glow inside card */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-[60px]" />
 
-            {/* Social buttons */}
-            <div className="flex flex-col gap-3 mb-6">
-              <button type="button" onClick={() => handleSocial('google')} disabled={isLoading || !!socialLoading} className="xai-social-btn" id="sign-in-google-btn">
-                {socialLoading === 'google' ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
-                <span>Continue with Google</span>
-              </button>
-              <button type="button" onClick={() => handleSocial('github')} disabled={isLoading || !!socialLoading} className="xai-social-btn" id="sign-in-github-btn">
-                {socialLoading === 'github' ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitHubIcon />}
-                <span>Continue with GitHub</span>
-              </button>
+            <div className="relative z-10">
+              <p className="text-blue-400 text-xs font-mono uppercase tracking-widest text-center mb-3">Welcome Back</p>
+              <h1 className="text-3xl font-semibold text-white text-center mb-2 tracking-tight">Sign In</h1>
+              <p className="text-sm text-gray-400 text-center mb-8">Continue to your ProdSuite workspace</p>
+
+              {/* Social buttons */}
+              <div className="flex flex-col gap-3 mb-6">
+                <button type="button" onClick={() => handleSocial('google')} disabled={isLoading || !!socialLoading} className="w-full flex items-center justify-center gap-2 bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/30 text-white rounded-full py-2.5 text-sm font-medium transition-all" id="sign-in-google-btn">
+                  {socialLoading === 'google' ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
+                  <span>Continue with Google</span>
+                </button>
+                <button type="button" onClick={() => handleSocial('github')} disabled={isLoading || !!socialLoading} className="w-full flex items-center justify-center gap-2 bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/30 text-white rounded-full py-2.5 text-sm font-medium transition-all" id="sign-in-github-btn">
+                  {socialLoading === 'github' ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitHubIcon />}
+                  <span>Continue with GitHub</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 mb-6 opacity-50">
+                <div className="flex-1 h-px bg-white/20" />
+                <span className="text-xs font-mono uppercase tracking-widest text-white">or</span>
+                <div className="flex-1 h-px bg-white/20" />
+              </div>
+
+              {error && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">{error}</div>
+              )}
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label htmlFor="sign-in-email" className="text-xs font-mono uppercase tracking-widest text-gray-400 block mb-2">Email</label>
+                  <input id="sign-in-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="sign-in-password" className="text-xs font-mono uppercase tracking-widest text-gray-400">Password</label>
+                    <button type="button" className="text-xs text-gray-400 hover:text-white transition-colors" tabIndex={-1}>Forgot password?</button>
+                  </div>
+                  <div className="relative">
+                    <input id="sign-in-password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" required className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all" />
+                    <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors" tabIndex={-1}>
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" disabled={isLoading} className="w-full mt-2 flex items-center justify-center gap-2 bg-white text-black hover:bg-gray-200 rounded-full py-3 text-sm font-medium transition-all active:scale-95" id="sign-in-submit-btn">
+                  {isLoading && !socialLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Signing in…</> : <>Sign In<ArrowRight className="w-3.5 h-3.5" /></>}
+                </button>
+              </form>
+
+              <p className="text-center text-sm text-gray-400 mt-8">
+                Don&apos;t have an account?{' '}
+                <Link href="/sign-up" className="text-white hover:text-blue-400 transition-colors">Create account</Link>
+              </p>
             </div>
-
-            <div className="xai-divider-text mb-6"><span>or continue with email</span></div>
-
-            {error && (
-              <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 xai-body-sm text-center">{error}</div>
-            )}
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <label htmlFor="sign-in-email" className="xai-caption-mono-sm text-[#7d8187] block mb-2">Email</label>
-                <input id="sign-in-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required className="xai-input w-full" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="sign-in-password" className="xai-caption-mono-sm text-[#7d8187]">Password</label>
-                  <button type="button" className="text-xs text-[#7d8187] hover:text-white transition-colors" tabIndex={-1}>Forgot password?</button>
-                </div>
-                <div className="relative">
-                  <input id="sign-in-password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" required className="xai-input w-full pr-10" />
-                  <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7d8187] hover:text-white transition-colors" tabIndex={-1}>
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <button type="submit" disabled={isLoading} className="xai-btn-primary w-full flex items-center justify-center gap-2 py-2.5 mt-2" id="sign-in-submit-btn">
-                {isLoading && !socialLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Signing in…</> : <>Sign In<ArrowRight className="w-3.5 h-3.5" /></>}
-              </button>
-            </form>
-
-            <p className="text-center xai-body-sm text-[#7d8187] mt-8">
-              Don&apos;t have an account?{' '}
-              <Link href="/sign-up" className="text-white hover:underline underline-offset-4">Create account</Link>
-            </p>
           </div>
         </div>
       </main>
 
-      <footer className="relative z-10 border-t border-[#212327] px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <p className="xai-caption-mono-sm text-[#7d8187]">AI Productivity Suite</p>
-          <p className="xai-caption-mono-sm text-[#7d8187]">Secure · Private · Yours</p>
+      <footer className="relative z-10 border-t border-white/10 bg-black/40 backdrop-blur-xl px-6 py-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <p className="text-sm text-gray-500">ProdSuite</p>
+          <p className="text-xs font-mono text-gray-600 uppercase tracking-widest">Secure · Private · Yours</p>
         </div>
       </footer>
     </div>

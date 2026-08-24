@@ -41,7 +41,7 @@ class GitFetcher:
         return parsed._replace(netloc=auth_netloc).geturl()
 
     @staticmethod
-    def clone_and_extract(repo_url: str, token: str = None) -> List[Dict[str, str]]:
+    def clone_and_extract(repo_url: str, token: str | None = None) -> List[Dict[str, str]]:
         """
         Shallow clones a repository, reads its important files, and returns them.
         

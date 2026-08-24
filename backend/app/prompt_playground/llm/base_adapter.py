@@ -34,7 +34,7 @@ class BaseLLMAdapter(ABC):
         """
         Streams prompt completion text chunks (for SSE).
         """
-        pass
+        yield ""
 
     def _estimate_tokens(self, text: str) -> int:
         """Rough fallback token estimation (~4 chars per token)."""

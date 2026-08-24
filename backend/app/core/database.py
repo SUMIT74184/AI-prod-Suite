@@ -148,7 +148,7 @@ def update_session_title(session_id: str, title: str):
     conn.close()
     return True
 
-def add_message(session_id: str, role: str, content: str, msg_id: str = None):
+def add_message(session_id: str, role: str, content: str, msg_id: str | None = None):
     if not msg_id:
         msg_id = str(uuid.uuid4())
     conn = get_db()

@@ -25,7 +25,7 @@ Nodes:
 
 import json
 import logging
-from typing import List
+from typing import Any, List
 
 from app.core.llm_client import generate_text
 from app.code_review_agent.state import ReviewState
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _safe_parse_json(text: str, fallback=None):
+def _safe_parse_json(text: str, fallback: Any = None) -> Any:
     """Strip markdown fences and parse JSON, returning fallback on failure."""
     text = text.strip()
     if text.startswith("```json"):
