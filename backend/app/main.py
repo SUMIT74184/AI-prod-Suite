@@ -33,6 +33,7 @@ from app.routers.ingest import router as ingest_router
 from app.routers.generate import router as generate_router
 from app.prompt_playground.api.router import router as prompt_playground_router
 from app.routers.code_review import router as code_review_router
+from app.routers.review_orchestrator import router as review_orchestrator_router
 
 # ---------------------------------------------------------------------------
 # Legacy agents (kept as-is — code reviewer and web researcher)
@@ -100,6 +101,8 @@ app.include_router(code_review_router)
 # Standalone Prompt Playground Router
 app.include_router(prompt_playground_router)
 
+# Production CLI Review Orchestrator
+app.include_router(review_orchestrator_router)
 
 # ---------------------------------------------------------------------------
 # Health check

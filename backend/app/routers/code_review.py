@@ -86,19 +86,24 @@ def run_code_review(request: CodeReviewRequest) -> CodeReviewResponse:
     """
     logger.info("Code review requested (%d chars)", len(request.code))
 
-    final_state = run_review(request.code)
+    final_state = run_review(request.code, repo_name="web-ui-snippet")
+
+    # Map unified findings back to legacy response shape
+    all_findings = final_state.get("deduplicated_findings", final_state.get("raw_findings", []))
+    bugs = [f for f in all_findings if f.get("agent") in ("bug",)]
+    security = [f for f in all_findings if f.get("agent") in ("security",)]
 
     return CodeReviewResponse(
-        bugs=[BugItem(**b) for b in final_state.get("bugs", [])],
-        security=[SecurityItem(**s) for s in final_state.get("security", [])],
-        complexity=final_state.get("complexity", ""),
+        bugs=[BugItem(**{k: b.get(k, "") for k in ("description", "severity", "line_ref", "category")}) for b in bugs],
+        security=[SecurityItem(**{k: s.get(k, "") for k in ("description", "severity", "category", "line_ref")}) for s in security],
+        complexity="",
         explanation=final_state.get("explanation", ""),
         health_score=final_state.get("health_score", 100),
         refactoring=final_state.get("refactoring", []),
-        unit_tests=final_state.get("unit_tests", ""),
-        language=final_state.get("language", "unknown"),
-        line_count=final_state.get("line_count", 0),
-        structure=final_state.get("structure", {}),
+        unit_tests=final_state.get("generated_tests", ""),
+        language="unknown",
+        line_count=0,
+        structure={},
         error=final_state.get("error"),
     )
 
@@ -127,25 +132,46 @@ def stream_code_review(code: str) -> StreamingResponse:
     """
     logger.info("SSE stream requested for code review (%d chars)", len(code))
 
-    def event_generator():
-        """
-        Generator that yields SSE-formatted strings.
+    async def event_generator():
+        import json
+        import threading
+        from queue import Queue, Empty
+        import asyncio
+        import time
 
-        Runs the agent ONCE via stream_review(), which streams through
-        compiled_graph.stream(). After all nodes complete, the final
-        "complete" event includes the full results.
-        """
-        try:
-            for update in stream_review(code):
-                json_str = json.dumps(update)
-                yield f"data: {json_str}\n\n"
-        except Exception as exc:
-            error_event = json.dumps({
-                "status": "error",
-                "message": str(exc),
-                "data": {},
-            })
-            yield f"data: {error_event}\n\n"
+        q = Queue()
+
+        def worker():
+            try:
+                for update in stream_review(code, repo_name="web-ui-snippet"):
+                    json_str = json.dumps(update)
+                    q.put(f"data: {json_str}\n\n")
+                q.put(None)
+            except Exception as exc:
+                error_event = json.dumps({
+                    "status": "error",
+                    "message": str(exc),
+                    "data": {},
+                })
+                q.put(f"data: {error_event}\n\n")
+                q.put(None)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+        last_ping = time.time()
+        while True:
+            try:
+                item = q.get_nowait()
+                if item is None:
+                    break
+                yield item
+                last_ping = time.time()
+            except Empty:
+                await asyncio.sleep(0.5)
+                if time.time() - last_ping > 15:
+                    ping_event = json.dumps({"status": "ping", "message": "Analyzing code... Please hold on."})
+                    yield f"data: {ping_event}\n\n"
+                    last_ping = time.time()
 
     return StreamingResponse(
         event_generator(),
@@ -197,7 +223,7 @@ def stream_repo_review(
                 for file in extracted_files:
                     code_context += f"--- FILE: {file['filepath']} ---\n{file['content']}\n\n"
                     
-                for update in stream_review(code_context):
+                for update in stream_review(code_context, repo_name=url):
                     q.put(f"data: {json.dumps(update)}\n\n")
                     
                 q.put(None)

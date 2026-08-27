@@ -116,6 +116,7 @@ class PromptRepository:
         conn.commit()
         conn.close()
         
+        # pyrefly: ignore [bad-return]
         return PromptRepository.get_prompt_by_id(prompt_id)
 
     @staticmethod

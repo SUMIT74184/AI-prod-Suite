@@ -2,23 +2,37 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import FileUploadZone from '@/components/shared/file-upload-zone'
 import { 
-  Loader2, Copy, AlertCircle, ShieldAlert, Lightbulb, BookOpen, 
-  Zap, Wrench, TestTube, Terminal, Code2, Bug, CheckCircle2,
-  Sparkles, Activity, Link2, ChevronRight
+  Loader2, Copy, AlertCircle, ShieldAlert, BookOpen, 
+  Wrench, TestTube, Terminal, Code2, Bug, CheckCircle2,
+  Activity, Link2, ChevronRight, PenTool
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
+interface Finding {
+  description: string
+  severity: string
+  line_ref: string
+  category: string
+  agent: string
+  confidence?: number
+}
+
+interface Fix {
+  finding_id?: string
+  file_path?: string
+  original_code: string
+  suggested_code: string
+}
+
 interface ReviewResult {
-  bugs: any[]
-  security: any[]
-  improvements: string[]
+  findings: Finding[]
+  fixes: Fix[]
   explanation: string
-  complexity: string
   refactoring: string[]
   unitTests: string
   healthScore: number
@@ -40,7 +54,7 @@ export default function CodeReviewerPage() {
   const [stepMessage, setStepMessage] = useState<string>('')
   
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null)
-  const [activeView, setActiveView] = useState<'overview' | 'bugs' | 'security' | 'improvements' | 'tests'>('overview')
+  const [activeView, setActiveView] = useState<'overview' | 'bugs' | 'security' | 'fixes' | 'tests'>('overview')
 
   const handleReview = async () => {
     if (!code.trim()) {
@@ -55,11 +69,9 @@ export default function CodeReviewerPage() {
     
     // Initialize empty result for progressive rendering
     const progressiveResult: ReviewResult = {
-      bugs: [],
-      security: [],
-      improvements: [],
+      findings: [],
+      fixes: [],
       explanation: '',
-      complexity: '',
       refactoring: [],
       unitTests: '',
       healthScore: 100,
@@ -84,21 +96,38 @@ export default function CodeReviewerPage() {
             return;
           }
 
-          setCurrentStep(data.status);
-          setStepMessage(data.message);
+          // Map completed nodes to the NEXT node that is currently running
+          const nextStepMap: Record<string, string> = {
+            'context_builder': 'agent_bug',
+            'agent_bug': 'agent_security',
+            'agent_security': 'agent_performance',
+            'agent_performance': 'agent_architecture',
+            'agent_architecture': 'agent_quality',
+            'agent_quality': 'validate_findings',
+            'validate_findings': 'deduplicate_findings',
+            'deduplicate_findings': 'aggregate_report',
+            'aggregate_report': 'generate_fixes',
+            'generate_fixes': 'generate_tests',
+            'generate_tests': 'finalize_review'
+          };
+
+          const currentlyRunningStep = nextStepMap[data.status] || data.status;
+          
+          if (data.status !== 'ping') {
+             setCurrentStep(currentlyRunningStep);
+             setStepMessage(`Running ${currentlyRunningStep.replace(/_/g, ' ')}...`);
+          }
 
           if (data.status === 'complete') {
             // Final update
             setReviewResult({
-               bugs: data.data.bugs || [],
-               security: data.data.security || [],
-               improvements: [], // Deprecated in v3
+               findings: data.data.findings || [],
+               fixes: data.data.fixes || [],
                explanation: data.data.explanation || '',
-               complexity: data.data.complexity || '',
                refactoring: data.data.refactoring || [],
-               unitTests: data.data.unit_tests || '',
+               unitTests: data.data.generated_tests || '',
                healthScore: data.data.health_score || 100,
-               severityBreakdown: calculateTotalSeverity(data.data.bugs, data.data.security)
+               severityBreakdown: calculateTotalSeverity(data.data.findings || [])
             });
             eventSource.close();
             setIsStreaming(false);
@@ -108,23 +137,30 @@ export default function CodeReviewerPage() {
                 if (!prev) return progressiveResult;
                 const next = { ...prev };
                 
-                if (data.status === 'detect_bugs' && data.data.bugs) {
-                   next.bugs = data.data.bugs;
-                }
-                if (data.status === 'check_security' && data.data.security) {
-                   next.security = data.data.security;
-                }
-                if (data.status === 'analyze_complexity' && data.data.complexity_preview) {
-                   next.complexity = data.data.complexity_preview;
-                }
-                if (data.status === 'synthesize_report') {
-                   next.explanation = data.data.explanation || '';
-                   next.refactoring = data.data.refactoring || [];
-                   next.healthScore = data.data.health_score || next.healthScore;
+                // The backend stream emits findings inside raw_findings or deduplicated_findings
+                const currentFindings = data.data.deduplicated_findings || data.data.raw_findings || [];
+                if (currentFindings.length > 0) {
+                   next.findings = currentFindings;
                 }
                 
-                // Keep severity count updated
-                next.severityBreakdown = calculateTotalSeverity(next.bugs, next.security);
+                if (data.data.generated_fixes) {
+                   next.fixes = data.data.generated_fixes;
+                }
+                
+                if (data.data.explanation) {
+                   next.explanation = data.data.explanation;
+                }
+                
+                if (data.data.refactoring) {
+                   next.refactoring = data.data.refactoring;
+                }
+                
+                if (data.data.generated_tests) {
+                   next.unitTests = data.data.generated_tests;
+                }
+                
+                next.healthScore = data.data.health_score || next.healthScore;
+                next.severityBreakdown = calculateTotalSeverity(next.findings);
                 
                 return next;
              });
@@ -148,10 +184,9 @@ export default function CodeReviewerPage() {
     }
   }
 
-  const calculateTotalSeverity = (bugs: any[] = [], security: any[] = []) => {
+  const calculateTotalSeverity = (findings: Finding[] = []) => {
      const counts = { critical: 0, high: 0, medium: 0, low: 0 };
-     const all = [...bugs, ...security];
-     all.forEach(item => {
+     findings.forEach(item => {
         const s = item.severity?.toLowerCase() || 'medium';
         if (s in counts) counts[s as keyof typeof counts]++;
      });
@@ -176,19 +211,15 @@ export default function CodeReviewerPage() {
     }
   }
 
-  const totalIssues = reviewResult 
-    ? (reviewResult.bugs?.length || 0) + (reviewResult.security?.length || 0) 
-    : 0
-
   const healthScore = reviewResult?.healthScore ?? 100;
 
   const steps = [
-    { id: 'parse_code', label: 'Parse' },
-    { id: 'detect_bugs', label: 'Bugs' },
-    { id: 'check_security', label: 'Security' },
-    { id: 'analyze_complexity', label: 'Complexity' },
-    { id: 'synthesize_report', label: 'Synthesize' },
-    { id: 'generate_tests', label: 'Tests' },
+    { id: 'context_builder', label: 'Context' },
+    { id: 'agent_bug', label: 'Bugs' },
+    { id: 'agent_security', label: 'Security' },
+    { id: 'agent_performance', label: 'Perf' },
+    { id: 'agent_architecture', label: 'Arch' },
+    { id: 'agent_quality', label: 'Quality' },
     { id: 'finalize_review', label: 'Finalize' }
   ];
 
@@ -202,6 +233,10 @@ export default function CodeReviewerPage() {
      }
   }
 
+  // Filter findings for display
+  const bugsList = reviewResult?.findings?.filter(f => f.agent === 'bug') || [];
+  const secList = reviewResult?.findings?.filter(f => f.agent === 'security') || [];
+
   return (
     <div className="flex flex-col h-full bg-[#050505] overflow-hidden">
       {/* Premium Header */}
@@ -212,10 +247,10 @@ export default function CodeReviewerPage() {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-white flex items-center gap-2">
-              Lumina Reviewer <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-mono border border-indigo-500/20 uppercase tracking-widest">v3.0</span>
+              Lumina Reviewer <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-mono border border-indigo-500/20 uppercase tracking-widest">v4.0</span>
             </h1>
             <p className="text-sm text-[#7d8187] mt-0.5 font-normal">
-              LangGraph-powered multi-agent code analysis pipeline
+              Production LangGraph Multi-Agent Architecture
             </p>
           </div>
         </div>
@@ -240,7 +275,7 @@ export default function CodeReviewerPage() {
         <div className="w-1/2 flex flex-col border-r border-[rgba(255,255,255,0.05)] bg-[#0a0a0a]">
           <div className="p-4 border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between">
             <span className="text-sm font-medium text-white flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-[#7d8187]" /> Source Code
+              <Terminal className="w-4 h-4 text-[#7d8187]" /> Source Code (Git Diff)
             </span>
             <Button
               variant="ghost"
@@ -256,7 +291,6 @@ export default function CodeReviewerPage() {
           
           <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
             <div className="relative flex-1 group">
-              {/* Fake line numbers for styling */}
               <div className="absolute left-0 top-0 bottom-0 w-10 bg-[#0d0d0d] border-r border-[#1a1c20] flex flex-col items-center py-3 text-xs font-mono text-[#333] select-none rounded-l-xl z-0 overflow-hidden">
                 {Array.from({ length: 50 }).map((_, i) => (
                   <span key={i} className="leading-[21px]">{i + 1}</span>
@@ -265,13 +299,12 @@ export default function CodeReviewerPage() {
               <textarea
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="Paste your source code here for analysis..."
+                placeholder="Paste your source code or diff here..."
                 className="w-full h-full p-3 pl-14 rounded-xl border border-[#212327] bg-[#141414] text-[#dadbdf] font-mono text-[13px] leading-[21px] resize-none focus:outline-none focus:border-indigo-500/50 placeholder-[#4a4a4a] transition-all relative z-10 bg-transparent custom-scrollbar"
                 spellCheck={false}
               />
             </div>
 
-            {/* File Upload Zone */}
             <div className="mt-auto">
               <FileUploadZone
                 onFilesSelected={handleFilesSelected}
@@ -287,7 +320,7 @@ export default function CodeReviewerPage() {
               {isStreaming ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Running Pipeline...
+                  Running Production Pipeline...
                 </>
               ) : (
                 <>
@@ -303,7 +336,7 @@ export default function CodeReviewerPage() {
         <div className="w-1/2 flex flex-col bg-[#050505] relative">
           
           {/* Progress Tracker (Visible when streaming) */}
-          {(isStreaming || (reviewResult && currentStep !== 'complete' && currentStep !== '')) && (
+          {(isStreaming || (reviewResult && currentStep !== 'complete' && currentStep !== 'error' && currentStep !== '')) && (
              <div className="p-4 border-b border-[rgba(255,255,255,0.05)] bg-[#0a0a0a]">
                 <div className="flex items-center gap-3 mb-3">
                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
@@ -314,12 +347,12 @@ export default function CodeReviewerPage() {
                       <p className="text-xs text-[#7d8187] font-mono">Agent state: {currentStep}</p>
                    </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                    {steps.map((step, idx) => {
-                      const isActive = currentStep === step.id;
-                      const isPast = steps.findIndex(s => s.id === currentStep) > idx;
+                      const isActive = currentStep.includes(step.id) || currentStep === step.id;
+                      const isPast = steps.findIndex(s => s.id === currentStep || currentStep.includes(s.id)) > idx;
                       return (
-                         <div key={step.id} className="flex items-center">
+                         <div key={step.id} className="flex items-center mb-1">
                             <div className={cn(
                                "px-2 py-1 rounded text-[10px] font-mono uppercase transition-colors",
                                isActive ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30" : 
@@ -340,9 +373,9 @@ export default function CodeReviewerPage() {
               <div className="w-20 h-20 rounded-full bg-[#141414] border border-[#212327] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
                 <ShieldAlert className="w-8 h-8 text-[#4a4a4a]" />
               </div>
-              <h2 className="text-xl font-medium text-white mb-2">Multi-Agent Analysis</h2>
+              <h2 className="text-xl font-medium text-white mb-2">Production Multi-Agent Scan</h2>
               <p className="text-[#7d8187] max-w-sm leading-relaxed text-sm">
-                Paste your code and click Analyze to run the LangGraph pipeline for security, complexity, and refactoring insights.
+                Powered by LangGraph. Your code will pass through 5 specialist agents (Bug, Security, Perf, Arch, Quality) and a post-processing validation layer.
               </p>
             </div>
           ) : reviewResult && (
@@ -384,7 +417,7 @@ export default function CodeReviewerPage() {
                   <button onClick={() => setActiveView('bugs')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'bugs' ? "bg-rose-500/10 border-rose-500/30" : "bg-[#141414] border-[#212327] hover:border-rose-500/30")}>
                     <div className="flex items-center justify-between mb-2">
                       <Bug className={cn("w-4 h-4", activeView === 'bugs' ? "text-rose-400" : "text-[#7d8187]")} />
-                      <span className="text-lg font-mono font-bold text-white">{reviewResult.bugs?.length || 0}</span>
+                      <span className="text-lg font-mono font-bold text-white">{bugsList.length}</span>
                     </div>
                     <p className="text-xs text-[#7d8187] uppercase font-semibold">Bugs</p>
                   </button>
@@ -392,17 +425,17 @@ export default function CodeReviewerPage() {
                   <button onClick={() => setActiveView('security')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'security' ? "bg-amber-500/10 border-amber-500/30" : "bg-[#141414] border-[#212327] hover:border-amber-500/30")}>
                     <div className="flex items-center justify-between mb-2">
                       <ShieldAlert className={cn("w-4 h-4", activeView === 'security' ? "text-amber-400" : "text-[#7d8187]")} />
-                      <span className="text-lg font-mono font-bold text-white">{reviewResult.security?.length || 0}</span>
+                      <span className="text-lg font-mono font-bold text-white">{secList.length}</span>
                     </div>
                     <p className="text-xs text-[#7d8187] uppercase font-semibold">Security</p>
                   </button>
 
-                  <button onClick={() => setActiveView('improvements')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'improvements' ? "bg-blue-500/10 border-blue-500/30" : "bg-[#141414] border-[#212327] hover:border-blue-500/30")}>
+                  <button onClick={() => setActiveView('fixes')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'fixes' ? "bg-blue-500/10 border-blue-500/30" : "bg-[#141414] border-[#212327] hover:border-blue-500/30")}>
                     <div className="flex items-center justify-between mb-2">
-                      <Wrench className={cn("w-4 h-4", activeView === 'improvements' ? "text-blue-400" : "text-[#7d8187]")} />
-                      <span className="text-lg font-mono font-bold text-white">{reviewResult.refactoring?.length || 0}</span>
+                      <PenTool className={cn("w-4 h-4", activeView === 'fixes' ? "text-blue-400" : "text-[#7d8187]")} />
+                      <span className="text-lg font-mono font-bold text-white">{reviewResult.fixes?.length || 0}</span>
                     </div>
-                    <p className="text-xs text-[#7d8187] uppercase font-semibold">Refactoring</p>
+                    <p className="text-xs text-[#7d8187] uppercase font-semibold">Generated Fixes</p>
                   </button>
                 </div>
               </div>
@@ -422,19 +455,23 @@ export default function CodeReviewerPage() {
                     {reviewResult.explanation && (
                        <div className="bg-gradient-to-r from-indigo-500/10 to-transparent border border-indigo-500/20 rounded-xl p-5">
                          <h3 className="text-sm font-semibold text-indigo-400 flex items-center gap-2 mb-2">
-                           <BookOpen className="w-4 h-4" /> AI Synthesis
+                           <BookOpen className="w-4 h-4" /> Final Synthesis
                          </h3>
                          <p className="text-sm text-[#dadbdf] leading-relaxed">{reviewResult.explanation}</p>
                        </div>
                     )}
-
-                    {reviewResult.complexity && (
-                       <div className="bg-[#141414] border border-[#212327] rounded-xl p-5 shadow-inner">
-                         <h3 className="text-sm font-semibold text-purple-400 flex items-center gap-2 mb-2">
-                           <Zap className="w-4 h-4" /> Complexity Analysis
+                    
+                    {reviewResult.refactoring?.length > 0 && (
+                      <div className="space-y-3">
+                         <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                           <Wrench className="w-4 h-4 text-blue-400" /> Key Refactoring Suggestions
                          </h3>
-                         <p className="text-sm text-[#dadbdf] leading-relaxed font-mono whitespace-pre-wrap">{reviewResult.complexity}</p>
-                       </div>
+                         {reviewResult.refactoring.map((imp, idx) => (
+                           <div key={idx} className="bg-[#141414] border border-[#212327] border-l-2 border-l-blue-500 rounded-lg p-3 shadow-sm">
+                             <p className="text-sm text-[#dadbdf]">{imp}</p>
+                           </div>
+                         ))}
+                      </div>
                     )}
                   </div>
                 )}
@@ -443,10 +480,10 @@ export default function CodeReviewerPage() {
                 {activeView === 'bugs' && (
                   <div className="space-y-4 animate-in slide-in-from-right-4">
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                      <Bug className="w-4 h-4 text-rose-400" /> Discovered Bugs
+                      <Bug className="w-4 h-4 text-rose-400" /> Logic & Edge Cases
                     </h3>
-                    {reviewResult.bugs?.length > 0 ? (
-                      reviewResult.bugs.map((bug, idx) => (
+                    {bugsList.length > 0 ? (
+                      bugsList.map((bug, idx) => (
                         <div key={idx} className={cn("bg-[#141414] border border-l-4 rounded-lg p-4 shadow-sm", getSeverityColor(bug.severity))}>
                            <div className="flex justify-between items-start mb-2">
                               <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-black/20">{bug.severity} | {bug.category}</span>
@@ -462,7 +499,7 @@ export default function CodeReviewerPage() {
                         ) : (
                            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-3 opacity-50" />
                         )}
-                        <p className="text-[#7d8187] text-sm">{isStreaming ? "Waiting for bug detection..." : "No bugs were detected in this scan."}</p>
+                        <p className="text-[#7d8187] text-sm">{isStreaming ? "Agent is scanning..." : "No bugs were detected in this scan."}</p>
                       </div>
                     )}
                   </div>
@@ -472,10 +509,10 @@ export default function CodeReviewerPage() {
                 {activeView === 'security' && (
                   <div className="space-y-4 animate-in slide-in-from-right-4">
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                      <ShieldAlert className="w-4 h-4 text-amber-400" /> Security Vulnerabilities
+                      <ShieldAlert className="w-4 h-4 text-amber-400" /> Vulnerabilities
                     </h3>
-                    {reviewResult.security?.length > 0 ? (
-                      reviewResult.security.map((sec, idx) => (
+                    {secList.length > 0 ? (
+                      secList.map((sec, idx) => (
                         <div key={idx} className={cn("bg-[#141414] border border-l-4 rounded-lg p-4 shadow-sm", getSeverityColor(sec.severity))}>
                            <div className="flex justify-between items-start mb-2">
                               <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-black/20">{sec.severity} | {sec.category}</span>
@@ -491,22 +528,35 @@ export default function CodeReviewerPage() {
                         ) : (
                            <ShieldAlert className="w-8 h-8 text-emerald-400 mx-auto mb-3 opacity-50" />
                         )}
-                        <p className="text-[#7d8187] text-sm">{isStreaming ? "Waiting for security analysis..." : "No security vulnerabilities detected."}</p>
+                        <p className="text-[#7d8187] text-sm">{isStreaming ? "Agent is scanning..." : "No security vulnerabilities detected."}</p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* IMPROVEMENTS / REFACTORING MODE */}
-                {activeView === 'improvements' && (
-                  <div className="space-y-4 animate-in slide-in-from-right-4">
+                {/* FIXES MODE */}
+                {activeView === 'fixes' && (
+                  <div className="space-y-6 animate-in slide-in-from-right-4">
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                      <Wrench className="w-4 h-4 text-blue-400" /> Refactoring Suggestions
+                      <PenTool className="w-4 h-4 text-blue-400" /> Automatically Generated Fixes
                     </h3>
-                    {reviewResult.refactoring?.length > 0 ? (
-                      reviewResult.refactoring.map((imp, idx) => (
-                        <div key={idx} className="bg-[#141414] border border-[#212327] border-l-2 border-l-blue-500 rounded-lg p-4 shadow-sm">
-                          <p className="text-sm text-[#dadbdf] leading-relaxed">{imp}</p>
+                    {reviewResult.fixes?.length > 0 ? (
+                      reviewResult.fixes.map((fix, idx) => (
+                        <div key={idx} className="bg-[#141414] border border-[#212327] rounded-lg overflow-hidden shadow-sm">
+                           <div className="bg-[#1a1c20] px-4 py-2 border-b border-[#212327] flex justify-between">
+                              <span className="text-xs text-[#7d8187] font-mono">Patch Suggestion #{idx+1}</span>
+                              {fix.file_path && <span className="text-xs text-blue-400 font-mono">{fix.file_path}</span>}
+                           </div>
+                           <div className="grid grid-cols-2 divide-x divide-[#212327]">
+                              <div className="p-3 bg-[rgba(244,63,94,0.02)]">
+                                 <span className="text-[10px] uppercase text-rose-500 font-bold mb-2 block tracking-wider">Original</span>
+                                 <pre className="text-[#dadbdf] text-xs font-mono overflow-x-auto custom-scrollbar">{fix.original_code}</pre>
+                              </div>
+                              <div className="p-3 bg-[rgba(52,211,153,0.02)]">
+                                 <span className="text-[10px] uppercase text-emerald-500 font-bold mb-2 block tracking-wider">Suggested</span>
+                                 <pre className="text-[#dadbdf] text-xs font-mono overflow-x-auto custom-scrollbar">{fix.suggested_code}</pre>
+                              </div>
+                           </div>
                         </div>
                       ))
                     ) : (
@@ -514,7 +564,7 @@ export default function CodeReviewerPage() {
                         {isStreaming ? (
                            <Loader2 className="w-8 h-8 text-[#7d8187] animate-spin mx-auto mb-3" />
                         ) : (
-                           <p className="text-[#7d8187] text-sm">Code structure looks solid.</p>
+                           <p className="text-[#7d8187] text-sm">No fixes generated (Code is healthy or no critical issues found).</p>
                         )}
                       </div>
                     )}

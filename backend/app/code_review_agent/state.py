@@ -4,56 +4,33 @@ code_review_agent/state.py
 Defines ReviewState — the typed dictionary that flows through every
 node in the LangGraph code review graph.
 
-Field ownership (which node writes which field):
-    code             → set by the caller (runner.py), never changed
-    language         → written by: parse_code
-    structure        → written by: parse_code
-    line_count       → written by: parse_code
-    bugs             → written by: detect_bugs
-    security         → written by: check_security
-    complexity       → written by: analyze_complexity
-    explanation      → written by: synthesize_report
-    health_score     → written by: synthesize_report
-    refactoring      → written by: synthesize_report (lightweight suggestions)
-    unit_tests       → written by: generate_tests
-    status           → written by: every node (for SSE streaming)
-    error            → written by: any node on exception
+Updated for Production-Level Architecture.
 """
 
-from typing import TypedDict, List, Optional
+from typing import TypedDict, List, Optional, Any, Dict
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
-# Sub-types — structured data for findings
+# Sub-types
 # ---------------------------------------------------------------------------
 
 @dataclass
-class BugFinding:
-    """A single bug or potential issue found in the code."""
+class Finding:
+    """A single issue found in the code by any specialist agent."""
+    id: str             # Unique ID for deduplication
+    agent: str          # Which agent found this (e.g. "bug", "security")
     description: str
     severity: str       # "critical", "high", "medium", "low"
-    line_ref: str       # Line number or range reference (e.g. "L12", "L5-L10")
-    category: str       # e.g. "logic_error", "edge_case", "type_error"
-
-
-@dataclass
-class SecurityFinding:
-    """A single security vulnerability found in the code."""
-    description: str
-    severity: str       # "critical", "high", "medium", "low"
-    category: str       # e.g. "injection", "xss", "auth", "crypto"
-    line_ref: str       # Line number or range reference
-
+    line_ref: str       
+    category: str
+    confidence: float   # Added for Validator to drop low-confidence findings
 
 @dataclass
-class CodeStructure:
-    """Parsed structural information about the code."""
-    functions: List[str] = field(default_factory=list)
-    classes: List[str] = field(default_factory=list)
-    imports: List[str] = field(default_factory=list)
-    summary: str = ""
-
+class ToolCall:
+    """Represents a request for the CLI to execute a tool (secure protocol)."""
+    id: str
+    tool_name: str
+    arguments: Dict[str, Any]
 
 # ---------------------------------------------------------------------------
 # ReviewState
@@ -62,63 +39,55 @@ class CodeStructure:
 class ReviewState(TypedDict):
     """
     The complete state of the Code Review Agent at any point in the graph.
-
-    Nodes return partial dicts — LangGraph merges them back automatically.
     """
 
     # --- Input ---
-    code: str                              # The raw source code to review
+    repo_name: str
+    git_diff: str                          # The raw diff to review
+    context_files: Dict[str, str]          # Files read from the repo to build context
 
-    # --- Parse node output ---
-    language: str                          # Detected programming language
-    structure: dict                        # Parsed code structure (as dict for serialization)
-    line_count: int                        # Number of lines in the code
+    # --- Tooling (Interactive Protocol) ---
+    pending_tool_calls: List[ToolCall]     # Tools the CLI needs to run
+    tool_results: Dict[str, Any]           # Results returned by the CLI
 
-    # --- Bug detection output ---
-    bugs: List[dict]                       # List of BugFinding dicts
+    # --- Raw Agent Findings ---
+    raw_findings: List[dict]               # All findings from all agents
 
-    # --- Security check output ---
-    security: List[dict]                   # List of SecurityFinding dicts
+    # --- Post-Processing ---
+    validated_findings: List[dict]         # Filtered by Finding Validator
+    deduplicated_findings: List[dict]      # Final list after Deduplication
 
-    # --- Complexity analysis output ---
-    complexity: str                        # Complexity analysis text
+    # --- Synthesis & Generation ---
+    explanation: str                       
+    health_score: int                      
+    refactoring: List[str]                 
+    generated_tests: str
+    generated_fixes: List[dict]            # Inline patches to fix findings
 
-    # --- Synthesis output ---
-    explanation: str                       # High-level explanation of what the code does
-    health_score: int                      # 0-100 health score
-    refactoring: List[str]                 # Refactoring suggestions
-
-    # --- Test generation output ---
-    unit_tests: str                        # Generated unit test code
-
-    # --- Streaming metadata ---
-    status: str                            # Current node name (for SSE)
-    error: Optional[str]                   # Error message if a node fails
+    # --- Metadata ---
+    status: str
+    error: Optional[str]
 
 
 # ---------------------------------------------------------------------------
 # Initial state factory
 # ---------------------------------------------------------------------------
 
-def initial_state(code: str) -> ReviewState:
-    """
-    Build a fresh ReviewState for a new code review job.
-
-    Called by runner.py before invoking the graph. Every field is
-    initialised to a safe empty value so nodes never see KeyError.
-    """
+def initial_state(git_diff: str, repo_name: str = "unknown") -> ReviewState:
     return ReviewState(
-        code=code,
-        language="unknown",
-        structure={},
-        line_count=0,
-        bugs=[],
-        security=[],
-        complexity="",
+        repo_name=repo_name,
+        git_diff=git_diff,
+        context_files={},
+        pending_tool_calls=[],
+        tool_results={},
+        raw_findings=[],
+        validated_findings=[],
+        deduplicated_findings=[],
         explanation="",
         health_score=100,
         refactoring=[],
-        unit_tests="",
+        generated_tests="",
+        generated_fixes=[],
         status="starting",
         error=None,
     )
