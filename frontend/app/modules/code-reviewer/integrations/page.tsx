@@ -2,13 +2,14 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
   Loader2, AlertCircle, ShieldAlert, BookOpen, 
   Zap, Wrench, TestTube, Terminal, Code2, Bug, CheckCircle2,
-  Activity, GitBranch, ArrowLeft
+  Activity, GitBranch, ArrowLeft, Search, Download
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -30,8 +31,56 @@ interface ReviewResult {
 }
 
 export default function GitIntegrationsPage() {
-  const [repoUrl, setRepoUrl] = useState('')
-  const [token, setToken] = useState('')
+  const [githubToken, setGithubToken] = useState('')
+  const [isConnected, setIsConnected] = useState(false)
+  const [repos, setRepos] = useState<any[]>([])
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedRepo, setSelectedRepo] = useState<any | null>(null)
+  
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get('sessionId')
+
+  // Load Session History
+  useEffect(() => {
+    if (sessionId) {
+      const fetchSession = async () => {
+        try {
+          const res = await fetch(`http://localhost:8000/api/py/conversations/${sessionId}`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.messages && data.messages.length >= 2) {
+              const asstMsg = data.messages.find((m: any) => m.role === 'assistant')
+              if (asstMsg) {
+                const parsed = JSON.parse(asstMsg.content)
+                setReviewResult({
+                  bugs: parsed.findings?.filter((f: any) => f.agent === 'bug') || parsed.bugs || [],
+                  security: parsed.findings?.filter((f: any) => f.agent === 'security') || parsed.security || [],
+                  explanation: parsed.explanation || '',
+                  complexity: parsed.complexity || '',
+                  refactoring: parsed.refactoring || [],
+                  unitTests: parsed.generated_tests || parsed.unit_tests || '',
+                  healthScore: parsed.health_score || parsed.healthScore || 100,
+                  severityBreakdown: calculateTotalSeverity(
+                     parsed.findings?.filter((f: any) => f.agent === 'bug') || parsed.bugs, 
+                     parsed.findings?.filter((f: any) => f.agent === 'security') || parsed.security
+                  )
+                })
+                setIsStreaming(false)
+                setIsConnected(true) // assume connected to show results
+                setCurrentStep('complete')
+                setStepMessage('Loaded from history')
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load session', err)
+        }
+      }
+      fetchSession()
+    }
+  }, [sessionId])
   
   // Streaming state
   const [isStreaming, setIsStreaming] = useState(false)
@@ -42,8 +91,8 @@ export default function GitIntegrationsPage() {
   const [activeView, setActiveView] = useState<'overview' | 'bugs' | 'security' | 'improvements' | 'tests'>('overview')
 
   const handleReview = async () => {
-    if (!repoUrl.trim()) {
-      alert('Please enter a GitHub or GitLab repository URL')
+    if (!selectedRepo) {
+      alert('Please select a repository')
       return
     }
 
@@ -67,9 +116,12 @@ export default function GitIntegrationsPage() {
     setActiveView('overview')
 
     try {
-      const encodedUrl = encodeURIComponent(repoUrl);
-      const encodedToken = token ? `&token=${encodeURIComponent(token)}` : '';
-      const eventSource = new EventSource(`/api/py/code-review/stream/repo?url=${encodedUrl}${encodedToken}`);
+      const newSessionId = crypto.randomUUID();
+      router.push(`/modules/code-reviewer/integrations?sessionId=${newSessionId}`);
+      
+      const encodedUrl = encodeURIComponent(selectedRepo.html_url);
+      const encodedToken = githubToken ? `&token=${encodeURIComponent(githubToken)}` : '';
+      const eventSource = new EventSource(`/api/py/code-review/stream/repo?url=${encodedUrl}${encodedToken}&session_id=${newSessionId}&module=code-reviewer`);
 
       eventSource.onmessage = (event) => {
         try {
@@ -105,6 +157,7 @@ export default function GitIntegrationsPage() {
             });
             eventSource.close();
             setIsStreaming(false);
+            window.dispatchEvent(new Event('refresh-conversations'));
           } else {
              // Progressive update based on step
              setReviewResult(prev => {
@@ -161,6 +214,77 @@ export default function GitIntegrationsPage() {
      return counts;
   }
 
+  const fetchRepos = async () => {
+    if (!githubToken.trim()) {
+      alert('Please enter your GitHub Personal Access Token');
+      return;
+    }
+    setIsFetchingRepos(true);
+    try {
+      const res = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      });
+      if (!res.ok) throw new Error('Failed to fetch repositories. Invalid token?');
+      const data = await res.json();
+      setRepos(data);
+      setIsConnected(true);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsFetchingRepos(false);
+    }
+  }
+
+  const downloadMarkdown = () => {
+    if (!reviewResult) return;
+    
+    let md = `# Code Review Report: ${selectedRepo?.full_name || 'Repository'}\n\n`;
+    md += `## 📊 Health Score: ${reviewResult.healthScore}/100\n\n`;
+    
+    if (reviewResult.explanation) {
+       md += `## 📝 Overview\n${reviewResult.explanation}\n\n`;
+    }
+    
+    if (reviewResult.bugs?.length > 0) {
+       md += `## 🐛 Bugs\n`;
+       reviewResult.bugs.forEach(b => {
+          md += `- **[${b.severity}] ${b.category}** (Line: ${b.line_ref})\n  ${b.description}\n`;
+       });
+       md += '\n';
+    }
+    
+    if (reviewResult.security?.length > 0) {
+       md += `## 🔒 Security\n`;
+       reviewResult.security.forEach(s => {
+          md += `- **[${s.severity}] ${s.category}** (Line: ${s.line_ref})\n  ${s.description}\n`;
+       });
+       md += '\n';
+    }
+    
+    if (reviewResult.refactoring?.length > 0) {
+       md += `## 🔧 Refactoring\n`;
+       reviewResult.refactoring.forEach(r => {
+          md += `- ${r}\n`;
+       });
+       md += '\n';
+    }
+    
+    if (reviewResult.complexity) {
+       md += `## ⚡ Complexity\n\`\`\`\n${reviewResult.complexity}\n\`\`\`\n\n`;
+    }
+
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `review-report-${(selectedRepo?.name || 'repo')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const healthScore = reviewResult?.healthScore ?? 100;
 
   const steps = [
@@ -210,54 +334,123 @@ export default function GitIntegrationsPage() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT PANEL: Input */}
-        <div className="w-1/3 flex flex-col border-r border-[rgba(255,255,255,0.05)] bg-[#0a0a0a]">
-          <div className="p-6 flex flex-col gap-6">
-             
-            <div>
-               <label className="text-sm font-medium text-[#dadbdf] mb-2 block flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-indigo-400" /> Repository URL
-               </label>
-               <Input 
-                  placeholder="https://github.com/user/repository" 
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  className="bg-[#141414] border-[#212327] text-white focus-visible:ring-indigo-500/50 placeholder:text-[#4a4a4a]"
-               />
-            </div>
+        {/* LEFT PANEL: Input & Repositories */}
+        <div className="w-1/3 flex flex-col border-r border-[rgba(255,255,255,0.05)] bg-[#0a0a0a] overflow-hidden">
+          {!isConnected ? (
+            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-in fade-in">
+               <div className="w-16 h-16 rounded-full bg-[#141414] border border-[#212327] flex items-center justify-center mb-6 shadow-lg">
+                  <GitBranch className="w-8 h-8 text-white" />
+               </div>
+               <h2 className="text-xl font-semibold text-white mb-2">Connect GitHub</h2>
+               <p className="text-[#7d8187] text-sm mb-8 leading-relaxed">
+                 Authenticate to securely review your private and public repositories. We only request read access.
+               </p>
 
-            <div>
-               <label className="text-sm font-medium text-[#dadbdf] mb-2 block flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-400" /> Personal Access Token (Optional)
-               </label>
-               <Input 
-                  type="password"
-                  placeholder="For private repositories..." 
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  className="bg-[#141414] border-[#212327] text-white focus-visible:ring-amber-500/50 placeholder:text-[#4a4a4a]"
-               />
-               <p className="text-xs text-[#7d8187] mt-2">Required only for scanning private repositories.</p>
+               <div className="w-full text-left">
+                 <label className="text-sm font-medium text-[#dadbdf] mb-2 flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-400" /> Personal Access Token
+                 </label>
+                 <Input 
+                    type="password"
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    className="bg-[#141414] border-[#212327] text-white focus-visible:ring-indigo-500/50 mb-4 h-11"
+                 />
+                 <Button
+                    onClick={fetchRepos}
+                    disabled={isFetchingRepos || !githubToken.trim()}
+                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-md transition-all"
+                 >
+                    {isFetchingRepos ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <GitBranch className="w-5 h-5 mr-2" />}
+                    Connect Account
+                 </Button>
+               </div>
             </div>
-            
-            <Button
-              onClick={handleReview}
-              disabled={isStreaming || !repoUrl.trim()}
-              className="w-full h-12 gap-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.15)] transition-all mt-4"
-            >
-              {isStreaming ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Scanning Repository...
-                </>
-              ) : (
-                <>
-                  <Activity className="w-5 h-5" />
-                  Run Full Scan
-                </>
-              )}
-            </Button>
-          </div>
+          ) : (
+            <div className="flex flex-col h-full overflow-hidden animate-in fade-in">
+              <div className="p-5 border-b border-[#212327]">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-medium text-white flex items-center gap-2">
+                     <GitBranch className="w-4 h-4 text-[#7d8187]" /> Your Repositories
+                  </h2>
+                  <button onClick={() => setIsConnected(false)} className="text-xs text-[#7d8187] hover:text-white transition-colors">
+                     Disconnect
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7d8187]" />
+                  <Input 
+                    placeholder="Search repositories..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-[#141414] border-[#212327] pl-9 h-10 text-white placeholder:text-[#4a4a4a]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                 {repos.filter(r => r.full_name.toLowerCase().includes(searchQuery.toLowerCase())).map(repo => (
+                    <button
+                       key={repo.id}
+                       onClick={() => setSelectedRepo(repo)}
+                       className={cn(
+                          "w-full text-left p-4 rounded-xl border transition-all flex flex-col gap-2",
+                          selectedRepo?.id === repo.id 
+                             ? "bg-indigo-500/10 border-indigo-500/30" 
+                             : "bg-[#141414] border-[#212327] hover:border-[#4a4a4a]"
+                       )}
+                    >
+                       <div className="flex items-center gap-2">
+                          <Code2 className={cn("w-4 h-4", selectedRepo?.id === repo.id ? "text-indigo-400" : "text-[#7d8187]")} />
+                          <span className={cn("font-medium text-sm truncate", selectedRepo?.id === repo.id ? "text-indigo-400" : "text-[#dadbdf]")}>
+                             {repo.full_name}
+                          </span>
+                       </div>
+                       <div className="flex items-center gap-3 text-xs text-[#7d8187]">
+                          <span className="flex items-center gap-1">
+                             <span className="w-2 h-2 rounded-full bg-amber-500/80"></span>
+                             {repo.language || 'Mixed'}
+                          </span>
+                          <span>⭐ {repo.stargazers_count}</span>
+                          {repo.private && <span className="text-rose-400 font-mono text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10">Private</span>}
+                       </div>
+                    </button>
+                 ))}
+                 {repos.length === 0 && (
+                    <div className="text-center p-8 text-[#7d8187] text-sm">No repositories found.</div>
+                 )}
+              </div>
+
+              <div className="p-5 border-t border-[#212327] bg-[#0a0a0a]">
+                <Button
+                  onClick={handleReview}
+                  disabled={isStreaming || !selectedRepo}
+                  className="relative w-full h-14 overflow-hidden rounded-xl bg-[#0a0a0a] group border border-transparent hover:border-transparent transition-all shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.3)]"
+                >
+                  {/* Gradient background with spin/pulse */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  {/* AI Sparkle / Shimmer effect */}
+                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.3)_50%,transparent_75%)] bg-[length:250%_250%] bg-[0%_0%] group-hover:bg-[100%_100%] transition-[background-position] duration-700" />
+                  
+                  <div className="relative flex items-center justify-center gap-3 w-full h-full text-white font-medium z-10">
+                  {isStreaming ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Scanning {selectedRepo?.name}...
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="w-5 h-5 group-hover:animate-pulse" />
+                      Run Code Review
+                    </>
+                  )}
+                  </div>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT PANEL: AI Review Dashboard */}
@@ -315,9 +508,9 @@ export default function GitIntegrationsPage() {
               <div className="w-20 h-20 rounded-full bg-[#141414] border border-[#212327] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
                 <GitBranch className="w-8 h-8 text-[#4a4a4a]" />
               </div>
-              <h2 className="text-xl font-medium text-white mb-2">Repository Scanning</h2>
+              <h2 className="text-xl font-medium text-white mb-2">Select a Repository</h2>
               <p className="text-[#7d8187] max-w-sm leading-relaxed text-sm">
-                Enter a repository URL to run a comprehensive multi-file LangGraph analysis for bugs, security vulnerabilities, and architectural health.
+                Choose a repository from the left panel to run a comprehensive multi-file LangGraph analysis for bugs, security vulnerabilities, and architectural health.
               </p>
             </div>
           ) : reviewResult && (
@@ -333,24 +526,37 @@ export default function GitIntegrationsPage() {
                     </div>
                   </div>
                   
-                  {/* Health Score Circular Gauge */}
-                  <div className="flex items-center gap-3 bg-[#141414] border border-[#212327] px-4 py-2 rounded-xl shadow-inner transition-colors duration-500" style={{ 
-                     borderColor: healthScore > 80 ? 'rgba(52,211,153,0.3)' : healthScore > 50 ? 'rgba(251,191,36,0.3)' : 'rgba(244,63,94,0.3)'
-                  }}>
-                    <div className="flex flex-col text-right">
-                      <span className="text-[10px] text-[#7d8187] uppercase tracking-wider font-semibold">Health Score</span>
-                      <span className={cn(
-                        "text-2xl font-bold font-mono transition-colors duration-500",
-                        healthScore > 80 ? "text-emerald-400" : healthScore > 50 ? "text-amber-400" : "text-rose-400"
-                      )}>
-                        {healthScore}/100
-                      </span>
-                    </div>
-                    <div className="w-10 h-10 rounded-full border-4 flex items-center justify-center transition-colors duration-500" style={{ 
-                      borderColor: healthScore > 80 ? 'rgba(52,211,153,0.2)' : healthScore > 50 ? 'rgba(251,191,36,0.2)' : 'rgba(244,63,94,0.2)'
-                    }}>
-                      {healthScore > 80 ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertCircle className="w-5 h-5 text-amber-400" />}
-                    </div>
+                  {/* Health Score & Download Button */}
+                  <div className="flex items-center gap-4">
+                     {(!isStreaming && currentStep === 'complete') && (
+                        <Button
+                           onClick={downloadMarkdown}
+                           variant="outline"
+                           className="bg-[#141414] border-[#212327] text-white hover:bg-[#1a1c20] hover:text-indigo-400 gap-2 h-10"
+                        >
+                           <Download className="w-4 h-4" />
+                           Download Report
+                        </Button>
+                     )}
+                     
+                     <div className="flex items-center gap-3 bg-[#141414] border border-[#212327] px-4 py-2 rounded-xl shadow-inner transition-colors duration-500" style={{ 
+                        borderColor: healthScore > 80 ? 'rgba(52,211,153,0.3)' : healthScore > 50 ? 'rgba(251,191,36,0.3)' : 'rgba(244,63,94,0.3)'
+                     }}>
+                       <div className="flex flex-col text-right">
+                         <span className="text-[10px] text-[#7d8187] uppercase tracking-wider font-semibold">Health Score</span>
+                         <span className={cn(
+                           "text-2xl font-bold font-mono transition-colors duration-500",
+                           healthScore > 80 ? "text-emerald-400" : healthScore > 50 ? "text-amber-400" : "text-rose-400"
+                         )}>
+                           {healthScore}/100
+                         </span>
+                       </div>
+                       <div className="w-10 h-10 rounded-full border-4 flex items-center justify-center transition-colors duration-500" style={{ 
+                         borderColor: healthScore > 80 ? 'rgba(52,211,153,0.2)' : healthScore > 50 ? 'rgba(251,191,36,0.2)' : 'rgba(244,63,94,0.2)'
+                       }}>
+                         {healthScore > 80 ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertCircle className="w-5 h-5 text-amber-400" />}
+                       </div>
+                     </div>
                   </div>
                 </div>
 

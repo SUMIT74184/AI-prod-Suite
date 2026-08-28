@@ -25,7 +25,8 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.rag.retriever import retrieve
+from app.rag.retriever import retrieve, RetrievedChunk
+from app.core.database import get_session
 from app.generators.summary import generate_summary
 from app.generators.notes import generate_notes
 from app.generators.flashcards import generate_flashcards
@@ -39,6 +40,19 @@ router = APIRouter()
 # than a specific chat question.
 DEFAULT_TOP_K = 20
 
+def get_context_chunks(session_id: str, query: str, top_k: int) -> list[RetrievedChunk]:
+    chunks = retrieve(session_id, query, top_k=top_k)
+    if not chunks:
+        db_session = get_session(session_id)
+        if db_session and db_session.get("messages"):
+            # Skip the first default greeting if it exists to avoid summarizing "Welcome"
+            msgs = db_session["messages"]
+            if len(msgs) > 0 and msgs[0]["role"] == "assistant" and "welcome" in msgs[0]["content"].lower():
+                msgs = msgs[1:]
+            history_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in msgs])
+            if history_text.strip():
+                return [RetrievedChunk(text=history_text, source="Conversation History", score=1.0, chunk_index=0)]
+    return chunks
 
 # ---------------------------------------------------------------------------
 # Shared request model
@@ -62,7 +76,7 @@ def summary_endpoint(request: GenerateRequest) -> Dict[str, Any]:
         { "markdown": "<formatted summary>" }
     """
     logger.info("Summary requested for session '%s' (top_k=%d)", request.session_id, request.top_k)
-    chunks = retrieve(request.session_id, "summarize all content", top_k=request.top_k)
+    chunks = get_context_chunks(request.session_id, "summarize all content", top_k=request.top_k)
     markdown = generate_summary(chunks)
     return {"markdown": markdown}
 
@@ -76,7 +90,7 @@ def notes_endpoint(request: GenerateRequest) -> Dict[str, Any]:
         { "markdown": "<formatted notes>" }
     """
     logger.info("Notes requested for session '%s' (top_k=%d)", request.session_id, request.top_k)
-    chunks = retrieve(request.session_id, "key concepts topics and important details", top_k=request.top_k)
+    chunks = get_context_chunks(request.session_id, "key concepts topics and important details", top_k=request.top_k)
     markdown = generate_notes(chunks)
     return {"markdown": markdown}
 
@@ -96,7 +110,7 @@ def flashcards_endpoint(request: GenerateRequest) -> Dict[str, Any]:
         }
     """
     logger.info("Flashcards requested for session '%s' (top_k=%d)", request.session_id, request.top_k)
-    chunks = retrieve(request.session_id, "key concepts definitions terms facts", top_k=request.top_k)
+    chunks = get_context_chunks(request.session_id, "key concepts definitions terms facts", top_k=request.top_k)
     result = generate_flashcards(chunks)
     return result.to_dict()
 
@@ -120,6 +134,6 @@ def mindmap_endpoint(request: GenerateRequest) -> Dict[str, Any]:
         }
     """
     logger.info("Mindmap requested for session '%s' (top_k=%d)", request.session_id, request.top_k)
-    chunks = retrieve(request.session_id, "main topics themes structure overview", top_k=request.top_k)
+    chunks = get_context_chunks(request.session_id, "main topics themes structure overview", top_k=request.top_k)
     result = generate_mindmap(chunks)
     return result.to_dict()

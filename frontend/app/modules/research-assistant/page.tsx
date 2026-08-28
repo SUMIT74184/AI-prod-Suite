@@ -332,9 +332,9 @@ export default function ResearchAssistantPage() {
   const handleQuickAction = async (action: string) => {
     // Chat-based actions go through the normal chat flow
     const chatActions: Record<string, string> = {
-      quiz: 'Create a quiz with 5 challenging questions based on the key topics in the ingested content.',
-      citations: 'Extract and format all citations, references, and sources mentioned in the ingested content.',
-      deckreport: 'Generate a comprehensive deck report detailing the main arguments, supporting evidence, and key takeaways from the ingested content.',
+      quiz: 'Create a quiz with 5 challenging questions based on the key topics in the ingested content (or our conversation history if no content is ingested).',
+      citations: 'Extract and format all citations, references, and sources mentioned in the ingested content (or our conversation history).',
+      deck_report: 'Generate a comprehensive deck report detailing the main arguments, supporting evidence, and key takeaways from the ingested content (or our conversation history if no content is ingested).',
     }
 
     if (chatActions[action]) {
@@ -454,6 +454,11 @@ export default function ResearchAssistantPage() {
         {/* Chat */}
         <div className="flex-1 overflow-hidden flex flex-col">
           <ChatInterface messages={messages} streamingMessageId={streamingMessageId} />
+
+          {/* Quick Actions Row */}
+          <div className="flex-shrink-0 pt-2 pb-0">
+            <QuickActions onAction={handleQuickAction} />
+          </div>
 
           {/* Input Area */}
           <div className="bg-transparent p-4 pb-8 flex-shrink-0">
@@ -690,7 +695,7 @@ function ChatInput({
     { id: 'quiz', label: 'Quiz', icon: <Lightbulb className="w-4 h-4" /> },
     { id: 'citations', label: 'Citations', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'mindmap', label: 'Mindmap', icon: <Map className="w-4 h-4" /> },
-    { id: 'deckreport', label: 'Deck Report', icon: <FileSpreadsheet className="w-4 h-4" /> },
+    { id: 'deck_report', label: 'Deck Report', icon: <FileSpreadsheet className="w-4 h-4" /> },
   ];
 
   return (

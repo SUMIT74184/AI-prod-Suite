@@ -113,7 +113,12 @@ def run_code_review(request: CodeReviewRequest) -> CodeReviewResponse:
 # ---------------------------------------------------------------------------
 
 @router.get("/stream")
-def stream_code_review(code: str) -> StreamingResponse:
+def stream_code_review(
+    code: str,
+    session_id: Optional[str] = Query(None),
+    user_id: str = Query("demo-user"),
+    module: str = Query("code-reviewer")
+) -> StreamingResponse:
     """
     Run the Code Review Agent and stream progress updates via SSE.
 
@@ -143,9 +148,26 @@ def stream_code_review(code: str) -> StreamingResponse:
 
         def worker():
             try:
+                final_result_data = {}
                 for update in stream_review(code, repo_name="web-ui-snippet"):
+                    if update.get("status") == "complete" and "data" in update:
+                        final_result_data = update["data"]
                     json_str = json.dumps(update)
                     q.put(f"data: {json_str}\n\n")
+
+                if session_id and final_result_data:
+                    try:
+                        from app.core.database import get_session, create_session, add_message
+                        db_session = get_session(session_id)
+                        if not db_session:
+                            title = "Snippet Review"
+                            create_session(session_id, user_id, title, module)
+                        
+                        add_message(session_id, "user", code)
+                        add_message(session_id, "assistant", json.dumps(final_result_data))
+                    except Exception as exc:
+                        logger.error("Failed to persist code review to DB: %s", exc)
+
                 q.put(None)
             except Exception as exc:
                 error_event = json.dumps({
@@ -190,7 +212,10 @@ def stream_code_review(code: str) -> StreamingResponse:
 @router.get("/stream/repo")
 def stream_repo_review(
     url: str = Query(..., description="The GitHub/GitLab repository URL"),
-    token: Optional[str] = Query(None, description="Optional PAT for private repos")
+    token: Optional[str] = Query(None, description="Optional PAT for private repos"),
+    session_id: Optional[str] = Query(None),
+    user_id: str = Query("demo-user"),
+    module: str = Query("code-reviewer")
 ) -> StreamingResponse:
     """
     Clones a repository, extracts source files, and streams the review progress.
@@ -223,9 +248,25 @@ def stream_repo_review(
                 for file in extracted_files:
                     code_context += f"--- FILE: {file['filepath']} ---\n{file['content']}\n\n"
                     
+                final_result_data = {}
                 for update in stream_review(code_context, repo_name=url):
+                    if update.get("status") == "complete" and "data" in update:
+                        final_result_data = update["data"]
                     q.put(f"data: {json.dumps(update)}\n\n")
                     
+                if session_id and final_result_data:
+                    try:
+                        from app.core.database import get_session, create_session, add_message
+                        db_session = get_session(session_id)
+                        if not db_session:
+                            title = f"Repo: {url.split('/')[-1]}"
+                            create_session(session_id, user_id, title, module)
+                        
+                        add_message(session_id, "user", url)
+                        add_message(session_id, "assistant", json.dumps(final_result_data))
+                    except Exception as exc:
+                        logger.error("Failed to persist repo code review to DB: %s", exc)
+                        
                 q.put(None)
             except Exception as e:
                 q.put(f"data: {json.dumps({'status': 'error', 'message': str(e), 'data': {}})}\n\n")

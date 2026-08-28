@@ -36,9 +36,9 @@ function CopyBlock({ code, language = 'bash' }: { code: string; language?: strin
 }
 
 const STEPS = [
-  { num: '01', label: 'Install the CLI', desc: 'Link it globally from the project' },
-  { num: '02', label: 'Add your API key', desc: 'Set up your .env file' },
-  { num: '03', label: 'Review code', desc: 'Point it at any file or directory' },
+  { num: '01', label: 'Install Locally', desc: 'npm link inside frontend folder' },
+  { num: '02', label: 'Run the Agent', desc: 'ai-reviewer dir ./my-repo' },
+  { num: '03', label: 'Get the Report', desc: 'Generates a .md review file' },
 ]
 
 const CLI_OPTIONS = [
@@ -119,25 +119,10 @@ export default function CodeReviewerDocsPage() {
           </div>
 
           <div className="xai-card p-5 mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <ChevronRight className="w-3.5 h-3.5 text-[#ff7a17]" />
-              <h3 className="text-[14px] text-white font-normal">Install from this project</h3>
-            </div>
-            <p className="xai-body-sm text-[#7d8187] mb-4 ml-5">
-              Clone the repository and link the CLI globally:
+            <p className="xai-body-sm text-[#7d8187] mb-4">
+              Navigate to the <code>frontend</code> folder of this project and link the CLI globally so you can use it anywhere on your laptop:
             </p>
-            <CopyBlock code={`cd ai-productivity-suite\nnpm install\nnpm link`} />
-          </div>
-
-          <div className="xai-card p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <ChevronRight className="w-3.5 h-3.5 text-[#7c3aed]" />
-              <h3 className="text-[14px] text-white font-normal">Run directly with npx</h3>
-            </div>
-            <p className="xai-body-sm text-[#7d8187] mb-4 ml-5">
-              If the package is published on npm:
-            </p>
-            <CopyBlock code={`npx ai-reviewer ./path/to/your/file.js`} />
+            <CopyBlock code={`cd frontend\nnpm install\nnpm link`} />
           </div>
         </section>
 
@@ -157,29 +142,33 @@ export default function CodeReviewerDocsPage() {
             <h2 className="xai-caption-mono text-[#7d8187]">Usage</h2>
           </div>
 
-          <div className="flex flex-col gap-4">
-            {[
-              { title: 'Review a single file', code: 'ai-reviewer ./src/utils.js' },
-              { title: 'Review with a specific model', code: 'ai-reviewer ./app.py --model gemini-2.5-pro' },
-              { title: 'Save review to a markdown file', code: 'ai-reviewer ./server.ts --output review.md' },
-            ].map((item) => (
-              <div key={item.title}>
-                <h3 className="xai-body-sm text-white mb-2">{item.title}</h3>
-                <CopyBlock code={item.code} />
-              </div>
-            ))}
-
+          <div className="flex flex-col gap-8">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <FolderOpen className="w-3.5 h-3.5 text-[#a0c3ec]" />
-                <h3 className="xai-body-sm text-white">Review an entire directory</h3>
+                <FolderOpen className="w-4 h-4 text-[#a0c3ec]" />
+                <h3 className="text-base text-white">1. Analyze a Local Repository</h3>
               </div>
-              <CopyBlock code={`ai-reviewer dir ./src --output full-review.md`} />
+              <p className="text-sm text-[#7d8187] mb-3 ml-6">
+                Point the agent to any folder on your laptop. It will recursively scan all code files and generate a comprehensive markdown report.
+              </p>
+              <CopyBlock code={`ai-reviewer dir ./my-project-folder --output review-report.md`} />
             </div>
 
             <div>
-              <h3 className="xai-body-sm text-white mb-2">Filter by file extensions</h3>
-              <CopyBlock code={`ai-reviewer dir ./backend --extensions .py,.mjs --output python-review.md`} />
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-base text-white">2. Read the .md Report</h3>
+              </div>
+              <p className="text-sm text-[#7d8187] mb-3 ml-6">
+                The agent will generate a <code>review-report.md</code> file in your current directory containing bugs, security vulnerabilities, and architecture feedback.
+              </p>
+            </div>
+            
+            <div>
+               <h3 className="xai-body-sm text-white mb-2 ml-6">Filter by file extensions (Optional)</h3>
+               <div className="ml-6">
+                 <CopyBlock code={`ai-reviewer dir ./backend --extensions .py,.mjs --output python-review.md`} />
+               </div>
             </div>
           </div>
         </section>

@@ -2,7 +2,8 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import FileUploadZone from '@/components/shared/file-upload-zone'
 import { 
@@ -56,6 +57,51 @@ export default function CodeReviewerPage() {
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null)
   const [activeView, setActiveView] = useState<'overview' | 'bugs' | 'security' | 'fixes' | 'tests'>('overview')
 
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get('sessionId')
+
+  // Load Session History
+  useEffect(() => {
+    if (sessionId) {
+      const fetchSession = async () => {
+        try {
+          const res = await fetch(`http://localhost:8000/api/py/conversations/${sessionId}`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.messages && data.messages.length >= 2) {
+              const userMsg = data.messages.find((m: any) => m.role === 'user')
+              const asstMsg = data.messages.find((m: any) => m.role === 'assistant')
+              
+              if (userMsg) {
+                setCode(userMsg.content)
+              }
+              
+              if (asstMsg) {
+                const parsed = JSON.parse(asstMsg.content)
+                setReviewResult({
+                  findings: parsed.findings || parsed.deduplicated_findings || parsed.raw_findings || [],
+                  fixes: parsed.fixes || parsed.generated_fixes || [],
+                  explanation: parsed.explanation || '',
+                  refactoring: parsed.refactoring || [],
+                  unitTests: parsed.generated_tests || parsed.unit_tests || '',
+                  healthScore: parsed.health_score || parsed.healthScore || 100,
+                  severityBreakdown: calculateTotalSeverity(parsed.findings || parsed.deduplicated_findings || parsed.raw_findings || [])
+                })
+                setIsStreaming(false)
+                setCurrentStep('complete')
+                setStepMessage('Loaded from history')
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load session', err)
+        }
+      }
+      fetchSession()
+    }
+  }, [sessionId])
+
   const handleReview = async () => {
     if (!code.trim()) {
       alert('Please enter code to review')
@@ -81,8 +127,11 @@ export default function CodeReviewerPage() {
     setActiveView('overview')
 
     try {
+      const newSessionId = crypto.randomUUID();
+      router.push(`/modules/code-reviewer?sessionId=${newSessionId}`);
+      
       const encodedCode = encodeURIComponent(code);
-      const eventSource = new EventSource(`/api/py/code-review/stream?code=${encodedCode}`);
+      const eventSource = new EventSource(`/api/py/code-review/stream?code=${encodedCode}&session_id=${newSessionId}&module=code-reviewer`);
 
       eventSource.onmessage = (event) => {
         try {
@@ -131,6 +180,7 @@ export default function CodeReviewerPage() {
             });
             eventSource.close();
             setIsStreaming(false);
+            window.dispatchEvent(new Event('refresh-conversations'));
           } else {
              // Progressive update based on step
              setReviewResult(prev => {
@@ -315,19 +365,27 @@ export default function CodeReviewerPage() {
             <Button
               onClick={handleReview}
               disabled={isStreaming || !code.trim()}
-              className="w-full h-12 gap-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.15)] transition-all"
+              className="relative w-full h-14 overflow-hidden rounded-xl bg-[#0a0a0a] group border border-transparent hover:border-transparent transition-all shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.3)]"
             >
+              {/* Gradient background with spin/pulse */}
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              {/* AI Sparkle / Shimmer effect */}
+              <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.3)_50%,transparent_75%)] bg-[length:250%_250%] bg-[0%_0%] group-hover:bg-[100%_100%] transition-[background-position] duration-700" />
+              
+              <div className="relative flex items-center justify-center gap-3 w-full h-full text-white font-medium z-10">
               {isStreaming ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Running Production Pipeline...
+                  Running AI Pipeline...
                 </>
               ) : (
                 <>
-                  <Activity className="w-5 h-5" />
+                  <Activity className="w-5 h-5 group-hover:animate-pulse" />
                   Analyze Source Code
                 </>
               )}
+              </div>
             </Button>
           </div>
         </div>

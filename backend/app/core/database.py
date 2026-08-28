@@ -90,7 +90,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def get_user_sessions(user_id: str, module: str = None):
+def get_user_sessions(user_id: str, module: str | None = None):
     conn = get_db()
     cursor = conn.cursor()
     if module:
