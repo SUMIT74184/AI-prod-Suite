@@ -307,3 +307,9 @@ CLERK_SECRET_KEY=...
 - **Move the database off the server's disk:** a managed Postgres free tier (e.g. Neon or Supabase) for chat history, and a hosted vector database if ChromaDB gets large.
 - **Run reviews in a job queue** (e.g. a Redis queue with a worker process) so a backend restart doesn't kill running reviews.
 - **Commercial use:** move off Vercel Hobby (to Vercel Pro, or self-host the frontend as in Option B).
+
+
+
+
+
+claude --resume 3a94b158-03a9-4251-8b58-27fa41712cc8
