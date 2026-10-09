@@ -37,7 +37,7 @@ flowchart TB
 
         CB["🔴 context_builder<br/>'Do you need full files?'<br/>diff[:2000] · context_builder.py:56"]
         CB --> Q{"pending_tool_calls?"}
-        Q -->|"yes: halt_for_tools"| HALT(["🟡 END early<br/>CLI: 202 + ToolCalls<br/>Web: 0 findings, score 100 (Bug B)"])
+        Q -->|"yes: halt_for_tools"| HALT(["🟡 END early<br/>CLI: status pending_tools + tool_calls<br/>Web: 0 findings, score 100 (Bug B)"])
         Q -->|"no: continue"| A1
 
         DIFF[/"state.git_diff<br/>same full input for every agent"/]
@@ -48,7 +48,7 @@ flowchart TB
             A2["🔴 2. agent_security<br/>OWASP top 10, secrets,<br/>XSS, SQLi<br/>category: security · :85"]
             A3["🔴 3. agent_performance<br/>loops, N+1, memory leaks,<br/>Big-O<br/>category: performance · :109"]
             A4["🔴 4. agent_architecture<br/>SOLID, coupling,<br/>bad patterns<br/>category: architecture · :133"]
-            A5["🔴 5. agent_quality<br/>naming, duplication,<br/>code smells<br/>category: quality · :158"]
+            A5["🔴 5. agent_quality<br/>naming, duplication,<br/>code smells<br/>category: quality · :157"]
             A1 --> A2 --> A3 --> A4 --> A5
         end
 
@@ -132,7 +132,7 @@ sequenceDiagram
     G-->>R: state + pending_tool_calls (END early)
     R->>S: store["mock-session-id"] = state
     R-->>O: state
-    O-->>C: 202 + ToolCalls (read_file)
+    O-->>C: HTTP 200 {status: pending_tools, session_id, tool_calls}
     C->>C: read files locally
     C->>O: POST /api/v1/review/tool_result
     O->>R: handle_tool_response(session_id, results)
@@ -142,8 +142,8 @@ sequenceDiagram
     G->>G: 🔴 5 agents → post-processing (8 more LLM calls)
     G-->>R: final state
     R->>S: delete session
-    R-->>O: findings, fixes, tests
-    O-->>C: 200 review result
+    R-->>O: final state
+    O-->>C: HTTP 200 {status: complete, findings, fixes, health_score}
     Note over G: context_files is never added to any agent prompt (Bug C)
     Note over S: one fixed session id shared by every CLI user (Bug D)
 ```
