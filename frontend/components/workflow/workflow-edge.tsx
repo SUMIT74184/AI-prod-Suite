@@ -1,8 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath, useReactFlow } from 'reactflow'
-import { X } from 'lucide-react'
+import { EdgeLabelRenderer, EdgeProps, getSmoothStepPath, useReactFlow } from 'reactflow'
+import { Plus, X } from 'lucide-react'
+
+export type EdgeRunState = 'idle' | 'flowing' | 'done'
+
+export const EDGE_COLORS: Record<EdgeRunState, string> = {
+  idle: 'rgba(255,255,255,0.22)',
+  flowing: '#ffc285',
+  done: 'rgba(52,211,153,0.7)',
+}
 
 export default function WorkflowEdge({
   id,
@@ -12,32 +20,39 @@ export default function WorkflowEdge({
   targetY,
   sourcePosition,
   targetPosition,
-  style = {},
-  markerEnd,
   selected,
-}: EdgeProps) {
+  data,
+}: EdgeProps<{ state?: EdgeRunState }>) {
   const { setEdges } = useReactFlow()
   const [isHovered, setIsHovered] = useState(false)
+  const state = data?.state || 'idle'
 
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
+    borderRadius: 16,
   })
 
-  const onEdgeClick = (e: React.MouseEvent) => {
+  const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     setEdges((edges) => edges.filter((edge) => edge.id !== id))
   }
 
-  const showButton = isHovered || selected
+  // Ask the page to insert a step on this connection
+  const onInsert = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.dispatchEvent(new CustomEvent('workflow-edge-insert', { detail: { id } }))
+  }
+
+  const stroke = isHovered || selected ? 'rgba(255,255,255,0.6)' : EDGE_COLORS[state]
 
   return (
     <>
-      {/* Invisible wider path to make hovering/clicking the edge effortless */}
+      {/* Invisible wider path to make hovering the edge effortless */}
       <path
         d={edgePath}
         fill="none"
@@ -48,20 +63,19 @@ export default function WorkflowEdge({
         onMouseLeave={() => setIsHovered(false)}
       />
 
-      {/* Visible animated base edge */}
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
+      <path
+        d={edgePath}
+        fill="none"
         style={{
-          ...style,
-          strokeWidth: selected || isHovered ? 2.5 : (style.strokeWidth || 2),
-          stroke: isHovered ? '#ffffff' : (style.stroke || '#c4b5fd'),
-          filter: isHovered ? 'drop-shadow(0 0 6px rgba(255,255,255,0.4))' : undefined,
-          transition: 'stroke 0.2s, stroke-width 0.2s, filter 0.2s',
+          stroke,
+          strokeWidth: state === 'idle' ? 1.5 : 2,
+          strokeDasharray: state === 'flowing' ? '6 6' : undefined,
+          transition: 'stroke 0.3s',
         }}
-      />
+      >
+        {state === 'flowing' && <animate attributeName="stroke-dashoffset" from="24" to="0" dur="0.6s" repeatCount="indefinite" />}
+      </path>
 
-      {/* Floating delete button positioned at the center of the edge */}
       <EdgeLabelRenderer>
         <div
           style={{
@@ -75,18 +89,21 @@ export default function WorkflowEdge({
         >
           <button
             type="button"
-            onClick={onEdgeClick}
-            className={`
-              w-5 h-5 rounded-full bg-[#181a1e] border border-[#363a3f]
-              flex items-center justify-center text-[#7d8187]
-              hover:text-white hover:bg-rose-600 hover:border-rose-500 hover:scale-110 active:scale-95
-              transition-all duration-150 shadow-md cursor-pointer
-              ${showButton ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}
-            `}
+            onClick={onInsert}
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-[#151619] text-gray-400 shadow-md transition-all hover:scale-110 hover:border-[#ff7a17] hover:text-[#ffc285]"
+            title="Insert a step here"
+            aria-label="Insert step"
+          >
+            <Plus className="h-3 w-3" strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className={`absolute left-full top-1/2 ml-1.5 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#111113] text-gray-500 shadow-md transition-all hover:border-red-400 hover:bg-red-500 hover:text-white ${isHovered || selected ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
             title="Delete this connection"
             aria-label="Delete edge"
           >
-            <X className="w-3 h-3 stroke-[2.5]" />
+            <X className="h-2.5 w-2.5" strokeWidth={2.5} />
           </button>
         </div>
       </EdgeLabelRenderer>

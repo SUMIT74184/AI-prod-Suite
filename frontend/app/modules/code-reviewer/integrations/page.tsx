@@ -2,17 +2,17 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { 
-  Loader2, AlertCircle, ShieldAlert, BookOpen, 
-  Zap, Wrench, TestTube, Terminal, Code2, Bug, CheckCircle2,
+import {
+  Loader2, ShieldAlert, BookOpen, Lock, Star,
+  Zap, Wrench, Code2, Bug, CheckCircle2,
   Activity, GitBranch, ArrowLeft, Search, Download
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { ModuleHeader, EmptyState, MonoLabel, ui } from '@/components/workspace/kit'
+import { PipelineTracker, HealthGauge, SeverityStrip, KpiTile, SegmentTabs, FindingCard, ReportSection, ReportPlaceholder } from '@/components/workspace/review-report'
 
 interface ReviewResult {
   bugs: any[]
@@ -30,7 +30,7 @@ interface ReviewResult {
   }
 }
 
-export default function GitIntegrationsPage() {
+function GitIntegrationsContent() {
   const [githubToken, setGithubToken] = useState('')
   const [isConnected, setIsConnected] = useState(false)
   const [repos, setRepos] = useState<any[]>([])
@@ -299,408 +299,284 @@ export default function GitIntegrationsPage() {
     { id: 'finalize_review', label: 'Finalize' }
   ];
 
-  const getSeverityColor = (severity: string) => {
-     switch (severity?.toLowerCase()) {
-        case 'critical': return 'text-purple-400 border-purple-500/50 bg-purple-500/10';
-        case 'high': return 'text-rose-400 border-rose-500/50 bg-rose-500/10';
-        case 'medium': return 'text-amber-400 border-amber-500/50 bg-amber-500/10';
-        case 'low': return 'text-blue-400 border-blue-500/50 bg-blue-500/10';
-        default: return 'text-[#7d8187] border-[#212327] bg-[#141414]';
-     }
-  }
-
   return (
-    <div className="flex flex-col h-full bg-[#050505] overflow-hidden">
-      {/* Premium Header */}
-      <div className="border-b border-[rgba(255,255,255,0.05)] p-5 flex items-center justify-between bg-gradient-to-r from-[#0a0a0a] to-[#0f0f0f]">
-        <div className="flex items-center gap-4">
-          <Link href="/modules/code-reviewer">
-            <Button variant="ghost" size="icon" className="text-[#7d8187] hover:text-white hover:bg-[#1a1c20]">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
+    <div className="flex h-full flex-col overflow-hidden bg-[#0a0a0a]">
+      <ModuleHeader
+        index="M.02"
+        section="Engineering · Integrations"
+        title="Repository"
+        accent="Scanner"
+        description="Scan entire GitHub or GitLab repositories for vulnerabilities"
+        leading={
+          <Link href="/modules/code-reviewer" className={cn(ui.iconBtn, 'border border-white/[0.08]')} aria-label="Back to Code Reviewer">
+            <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.1)]">
-            <GitBranch className="w-6 h-6 text-indigo-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-white flex items-center gap-2">
-              Repository Scanner
-            </h1>
-            <p className="text-sm text-[#7d8187] mt-0.5 font-normal">
-              Scan entire GitHub or GitLab repositories for vulnerabilities
-            </p>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* LEFT PANEL: Input & Repositories */}
-        <div className="w-1/3 flex flex-col border-r border-[rgba(255,255,255,0.05)] bg-[#0a0a0a] overflow-hidden">
+        <div className="flex w-1/3 min-w-[300px] flex-col overflow-hidden border-r border-white/[0.06]">
           {!isConnected ? (
-            <div className="p-8 flex flex-col items-center justify-center h-full text-center animate-in fade-in">
-               <div className="w-16 h-16 rounded-full bg-[#141414] border border-[#212327] flex items-center justify-center mb-6 shadow-lg">
-                  <GitBranch className="w-8 h-8 text-white" />
-               </div>
-               <h2 className="text-xl font-semibold text-white mb-2">Connect GitHub</h2>
-               <p className="text-[#7d8187] text-sm mb-8 leading-relaxed">
-                 Authenticate to securely review your private and public repositories. We only request read access.
-               </p>
+            <div className="relative flex h-full flex-col justify-center p-8 animate-in fade-in">
+              <div className="lab-grid-bg lab-grid-fade pointer-events-none absolute inset-0 opacity-50" />
+              <div className="relative">
+                <span className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/60 shadow-[0_0_40px_-8px_rgba(255,122,23,0.45)]">
+                  <GitBranch className="h-5 w-5 text-[#ffc285]" strokeWidth={1.5} />
+                </span>
+                <MonoLabel index="01">Connect</MonoLabel>
+                <h2 className="mt-2 text-[24px] tracking-[-0.02em] text-white">
+                  Connect <span className="lab-serif text-[#ffc285]">GitHub</span>
+                </h2>
+                <p className="mb-8 mt-2 text-[13.5px] leading-relaxed text-gray-500">
+                  Authenticate to securely review your private and public repositories. We only request read access.
+                </p>
 
-               <div className="w-full text-left">
-                 <label className="text-sm font-medium text-[#dadbdf] mb-2 flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-amber-400" /> Personal Access Token
-                 </label>
-                 <Input 
-                    type="password"
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
-                    value={githubToken}
-                    onChange={(e) => setGithubToken(e.target.value)}
-                    className="bg-[#141414] border-[#212327] text-white focus-visible:ring-indigo-500/50 mb-4 h-11"
-                 />
-                 <Button
-                    onClick={fetchRepos}
-                    disabled={isFetchingRepos || !githubToken.trim()}
-                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-md transition-all"
-                 >
-                    {isFetchingRepos ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <GitBranch className="w-5 h-5 mr-2" />}
-                    Connect Account
-                 </Button>
-               </div>
+                <label className="mb-2 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-gray-400">
+                  <Lock className="h-3 w-3 text-[#ffc285]" /> Personal Access Token
+                </label>
+                <input
+                  type="password"
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  className="ws-field mb-4 h-11 w-full px-4 font-mono text-[13px]"
+                />
+                <button
+                  onClick={fetchRepos}
+                  disabled={isFetchingRepos || !githubToken.trim()}
+                  className={cn(ui.btnPrimary, 'h-11 w-full')}
+                >
+                  {isFetchingRepos ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4" />}
+                  Connect Account
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col h-full overflow-hidden animate-in fade-in">
-              <div className="p-5 border-b border-[#212327]">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-medium text-white flex items-center gap-2">
-                     <GitBranch className="w-4 h-4 text-[#7d8187]" /> Your Repositories
-                  </h2>
-                  <button onClick={() => setIsConnected(false)} className="text-xs text-[#7d8187] hover:text-white transition-colors">
-                     Disconnect
+            <div className="flex h-full flex-col overflow-hidden animate-in fade-in">
+              <div className="space-y-3 border-b border-white/[0.06] p-5">
+                <div className="flex items-center justify-between">
+                  <MonoLabel index="01">Your repositories · {repos.length}</MonoLabel>
+                  <button onClick={() => setIsConnected(false)} className="font-mono text-[10.5px] uppercase tracking-wider text-gray-500 transition-colors hover:text-red-300">
+                    Disconnect
                   </button>
                 </div>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7d8187]" />
-                  <Input 
+                <div className="ws-field flex h-10 items-center gap-2 px-3">
+                  <Search className="h-4 w-4 text-gray-500" />
+                  <input
                     placeholder="Search repositories..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-[#141414] border-[#212327] pl-9 h-10 text-white placeholder:text-[#4a4a4a]"
+                    className="flex-1 bg-transparent text-[13.5px] text-white placeholder-gray-600 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-                 {repos.filter(r => r.full_name.toLowerCase().includes(searchQuery.toLowerCase())).map(repo => (
+              <div className="flex-1 space-y-1.5 overflow-y-auto p-3">
+                {repos.filter(r => r.full_name.toLowerCase().includes(searchQuery.toLowerCase())).map(repo => {
+                  const selected = selectedRepo?.id === repo.id
+                  return (
                     <button
-                       key={repo.id}
-                       onClick={() => setSelectedRepo(repo)}
-                       className={cn(
-                          "w-full text-left p-4 rounded-xl border transition-all flex flex-col gap-2",
-                          selectedRepo?.id === repo.id 
-                             ? "bg-indigo-500/10 border-indigo-500/30" 
-                             : "bg-[#141414] border-[#212327] hover:border-[#4a4a4a]"
-                       )}
+                      key={repo.id}
+                      onClick={() => setSelectedRepo(repo)}
+                      className={cn(
+                        'relative flex w-full flex-col gap-2 overflow-hidden rounded-xl border p-3.5 text-left transition-all',
+                        selected ? 'border-[#ff7a17]/40 bg-[#ff7a17]/[0.06]' : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15'
+                      )}
                     >
-                       <div className="flex items-center gap-2">
-                          <Code2 className={cn("w-4 h-4", selectedRepo?.id === repo.id ? "text-indigo-400" : "text-[#7d8187]")} />
-                          <span className={cn("font-medium text-sm truncate", selectedRepo?.id === repo.id ? "text-indigo-400" : "text-[#dadbdf]")}>
-                             {repo.full_name}
-                          </span>
-                       </div>
-                       <div className="flex items-center gap-3 text-xs text-[#7d8187]">
-                          <span className="flex items-center gap-1">
-                             <span className="w-2 h-2 rounded-full bg-amber-500/80"></span>
-                             {repo.language || 'Mixed'}
-                          </span>
-                          <span>⭐ {repo.stargazers_count}</span>
-                          {repo.private && <span className="text-rose-400 font-mono text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10">Private</span>}
-                       </div>
+                      {selected && <span className="absolute inset-y-0 left-0 w-[2px] bg-[#ff7a17]" />}
+                      <div className="flex items-center gap-2">
+                        <Code2 className={cn('h-4 w-4 shrink-0', selected ? 'text-[#ffc285]' : 'text-gray-500')} />
+                        <span className={cn('truncate text-[13.5px]', selected ? 'text-white' : 'text-gray-300')}>
+                          {repo.full_name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 font-mono text-[10.5px] text-gray-500">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#ffc285]" />
+                          {repo.language || 'Mixed'}
+                        </span>
+                        <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {repo.stargazers_count}</span>
+                        {repo.private && <span className="rounded-full border border-white/10 px-1.5 py-px uppercase tracking-wider text-gray-400">Private</span>}
+                      </div>
                     </button>
-                 ))}
-                 {repos.length === 0 && (
-                    <div className="text-center p-8 text-[#7d8187] text-sm">No repositories found.</div>
-                 )}
+                  )
+                })}
+                {repos.length === 0 && (
+                  <div className="p-8 text-center text-[13px] text-gray-500">No repositories found.</div>
+                )}
               </div>
 
-              <div className="p-5 border-t border-[#212327] bg-[#0a0a0a]">
-                <Button
+              <div className="border-t border-white/[0.06] p-5">
+                <button
                   onClick={handleReview}
                   disabled={isStreaming || !selectedRepo}
-                  className="relative w-full h-14 overflow-hidden rounded-xl bg-[#0a0a0a] group border border-transparent hover:border-transparent transition-all shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.3)]"
+                  className={cn(ui.btnPrimary, 'relative h-11 w-full overflow-hidden text-[14px]')}
                 >
-                  {/* Gradient background with spin/pulse */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
-                  
-                  {/* AI Sparkle / Shimmer effect */}
-                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.3)_50%,transparent_75%)] bg-[length:250%_250%] bg-[0%_0%] group-hover:bg-[100%_100%] transition-[background-position] duration-700" />
-                  
-                  <div className="relative flex items-center justify-center gap-3 w-full h-full text-white font-medium z-10">
+                  {isStreaming && <span className="lab-beam pointer-events-none absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-[#ff7a17]/25 to-transparent" />}
                   {isStreaming ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Scanning {selectedRepo?.name}...
                     </>
                   ) : (
                     <>
-                      <Activity className="w-5 h-5 group-hover:animate-pulse" />
+                      <Activity className="h-4 w-4" />
                       Run Code Review
                     </>
                   )}
-                  </div>
-                </Button>
+                </button>
               </div>
             </div>
           )}
         </div>
 
         {/* RIGHT PANEL: AI Review Dashboard */}
-        <div className="w-2/3 flex flex-col bg-[#050505] relative">
-          
+        <div className="relative flex min-w-0 flex-1 flex-col bg-[#070708]">
           {/* Progress Tracker (Visible when streaming) */}
           {(isStreaming || (reviewResult && currentStep !== 'complete' && currentStep !== '')) && (
-             <div className="p-6 border-b border-[rgba(255,255,255,0.05)] bg-[#0a0a0a]">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
-                   </div>
-                   <div>
-                      <h3 className="text-sm font-medium text-white">{stepMessage}</h3>
-                      <p className="text-xs text-[#7d8187] font-mono">Agent state: {currentStep}</p>
-                   </div>
-                </div>
-                
-                {/* Visual Stepper */}
-                <div className="flex items-center justify-between w-full px-2 mt-4 relative">
-                   <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-[#212327] z-0"></div>
-                   {steps.map((step, index) => {
-                      const stepIndex = steps.findIndex(s => s.id === currentStep);
-                      const isCompleted = stepIndex > index || currentStep === 'complete';
-                      const isCurrent = step.id === currentStep;
-                      
-                      return (
-                         <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
-                            <div className={cn(
-                               "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300",
-                               isCompleted ? "bg-emerald-500 border-emerald-500" :
-                               isCurrent ? "bg-indigo-500 border-indigo-500 ring-4 ring-indigo-500/20" :
-                               "bg-[#141414] border-[#4a4a4a]"
-                            )}>
-                               {isCompleted && <CheckCircle2 className="w-3 h-3 text-[#050505]" />}
-                            </div>
-                            <span className={cn(
-                               "text-[10px] font-mono uppercase font-semibold transition-colors duration-300 absolute -bottom-6 whitespace-nowrap",
-                               isCompleted ? "text-emerald-400" :
-                               isCurrent ? "text-indigo-400" :
-                               "text-[#4a4a4a]"
-                            )}>
-                               {step.label}
-                            </span>
-                         </div>
-                      );
-                   })}
-                </div>
-                <div className="h-4"></div> {/* Spacer for absolute labels */}
-             </div>
+            <PipelineTracker steps={steps} currentStep={currentStep} message={stepMessage} />
           )}
 
           {!reviewResult && !isStreaming ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-20 h-20 rounded-full bg-[#141414] border border-[#212327] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
-                <GitBranch className="w-8 h-8 text-[#4a4a4a]" />
-              </div>
-              <h2 className="text-xl font-medium text-white mb-2">Select a Repository</h2>
-              <p className="text-[#7d8187] max-w-sm leading-relaxed text-sm">
-                Choose a repository from the left panel to run a comprehensive multi-file LangGraph analysis for bugs, security vulnerabilities, and architectural health.
-              </p>
-            </div>
+            <EmptyState
+              icon={GitBranch}
+              title="Select a"
+              accent="repository."
+              body="Choose a repository from the left panel to run a comprehensive multi-file LangGraph analysis for bugs, security vulnerabilities, and architectural health."
+            />
           ) : reviewResult && (
-            <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-1 flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Dashboard Header / Scorecard */}
-              <div className="p-6 border-b border-[rgba(255,255,255,0.05)] bg-[#0a0a0a]">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-white">Repository Health Report</h2>
-                    <div className="flex gap-2 mt-2">
-                       {reviewResult.severityBreakdown?.critical ? <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-mono">{reviewResult.severityBreakdown.critical} CRIT</span> : null}
-                       {reviewResult.severityBreakdown?.high ? <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono">{reviewResult.severityBreakdown.high} HIGH</span> : null}
+              <div className="space-y-5 border-b border-white/[0.06] px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <MonoLabel index="02">Repository health report</MonoLabel>
+                    <h2 className="mt-1.5 truncate text-[19px] tracking-tight text-white">
+                      {selectedRepo?.full_name || 'Repository'}
+                    </h2>
+                    <div className="mt-2">
+                      <SeverityStrip breakdown={reviewResult.severityBreakdown} />
                     </div>
                   </div>
-                  
-                  {/* Health Score & Download Button */}
-                  <div className="flex items-center gap-4">
-                     {(!isStreaming && currentStep === 'complete') && (
-                        <Button
-                           onClick={downloadMarkdown}
-                           variant="outline"
-                           className="bg-[#141414] border-[#212327] text-white hover:bg-[#1a1c20] hover:text-indigo-400 gap-2 h-10"
-                        >
-                           <Download className="w-4 h-4" />
-                           Download Report
-                        </Button>
-                     )}
-                     
-                     <div className="flex items-center gap-3 bg-[#141414] border border-[#212327] px-4 py-2 rounded-xl shadow-inner transition-colors duration-500" style={{ 
-                        borderColor: healthScore > 80 ? 'rgba(52,211,153,0.3)' : healthScore > 50 ? 'rgba(251,191,36,0.3)' : 'rgba(244,63,94,0.3)'
-                     }}>
-                       <div className="flex flex-col text-right">
-                         <span className="text-[10px] text-[#7d8187] uppercase tracking-wider font-semibold">Health Score</span>
-                         <span className={cn(
-                           "text-2xl font-bold font-mono transition-colors duration-500",
-                           healthScore > 80 ? "text-emerald-400" : healthScore > 50 ? "text-amber-400" : "text-rose-400"
-                         )}>
-                           {healthScore}/100
-                         </span>
-                       </div>
-                       <div className="w-10 h-10 rounded-full border-4 flex items-center justify-center transition-colors duration-500" style={{ 
-                         borderColor: healthScore > 80 ? 'rgba(52,211,153,0.2)' : healthScore > 50 ? 'rgba(251,191,36,0.2)' : 'rgba(244,63,94,0.2)'
-                       }}>
-                         {healthScore > 80 ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertCircle className="w-5 h-5 text-amber-400" />}
-                       </div>
-                     </div>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    {(!isStreaming && currentStep === 'complete') && (
+                      <button onClick={downloadMarkdown} className={ui.btnOutline}>
+                        <Download className="h-3.5 w-3.5" />
+                        Download Report
+                      </button>
+                    )}
+                    <HealthGauge score={healthScore} />
                   </div>
                 </div>
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-3 gap-3">
-                  <button onClick={() => setActiveView('bugs')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'bugs' ? "bg-rose-500/10 border-rose-500/30" : "bg-[#141414] border-[#212327] hover:border-rose-500/30")}>
-                    <div className="flex items-center justify-between mb-2">
-                      <Bug className={cn("w-4 h-4", activeView === 'bugs' ? "text-rose-400" : "text-[#7d8187]")} />
-                      <span className="text-lg font-mono font-bold text-white">{reviewResult.bugs?.length || 0}</span>
-                    </div>
-                    <p className="text-xs text-[#7d8187] uppercase font-semibold">Bugs Found</p>
-                  </button>
-
-                  <button onClick={() => setActiveView('security')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'security' ? "bg-amber-500/10 border-amber-500/30" : "bg-[#141414] border-[#212327] hover:border-amber-500/30")}>
-                    <div className="flex items-center justify-between mb-2">
-                      <ShieldAlert className={cn("w-4 h-4", activeView === 'security' ? "text-amber-400" : "text-[#7d8187]")} />
-                      <span className="text-lg font-mono font-bold text-white">{reviewResult.security?.length || 0}</span>
-                    </div>
-                    <p className="text-xs text-[#7d8187] uppercase font-semibold">Vulnerabilities</p>
-                  </button>
-
-                  <button onClick={() => setActiveView('improvements')} className={cn("text-left p-3 rounded-xl border transition-all", activeView === 'improvements' ? "bg-blue-500/10 border-blue-500/30" : "bg-[#141414] border-[#212327] hover:border-blue-500/30")}>
-                    <div className="flex items-center justify-between mb-2">
-                      <Wrench className={cn("w-4 h-4", activeView === 'improvements' ? "text-blue-400" : "text-[#7d8187]")} />
-                      <span className="text-lg font-mono font-bold text-white">{reviewResult.refactoring?.length || 0}</span>
-                    </div>
-                    <p className="text-xs text-[#7d8187] uppercase font-semibold">Refactoring</p>
-                  </button>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <KpiTile icon={Bug} label="Bugs Found" value={reviewResult.bugs?.length || 0} active={activeView === 'bugs'} onClick={() => setActiveView('bugs')} />
+                  <KpiTile icon={ShieldAlert} label="Vulnerabilities" value={reviewResult.security?.length || 0} active={activeView === 'security'} onClick={() => setActiveView('security')} />
+                  <KpiTile icon={Wrench} label="Refactoring" value={reviewResult.refactoring?.length || 0} active={activeView === 'improvements'} onClick={() => setActiveView('improvements')} />
                 </div>
               </div>
 
+              <div className="border-b border-white/[0.06] px-6 py-2.5">
+                <SegmentTabs
+                  value={activeView}
+                  onChange={setActiveView}
+                  tabs={[
+                    { id: 'overview', label: 'Overview' },
+                    { id: 'bugs', label: 'Bugs' },
+                    { id: 'security', label: 'Security' },
+                    { id: 'improvements', label: 'Refactoring' },
+                  ]}
+                />
+              </div>
+
               {/* Detailed View Area */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-                
+              <div className="flex-1 space-y-6 overflow-y-auto p-6">
                 {/* OVERVIEW MODE */}
                 {activeView === 'overview' && (
-                  <div className="space-y-6 animate-in fade-in">
-                    {reviewResult.explanation && (
-                       <div className="bg-gradient-to-r from-indigo-500/10 to-transparent border border-indigo-500/20 rounded-xl p-5">
-                         <h3 className="text-sm font-semibold text-indigo-400 flex items-center gap-2 mb-2">
-                           <BookOpen className="w-4 h-4" /> Repo Synthesis
-                         </h3>
-                         <p className="text-sm text-[#dadbdf] leading-relaxed">{reviewResult.explanation}</p>
-                       </div>
+                  <div className="space-y-5 animate-in fade-in">
+                    {reviewResult.explanation ? (
+                      <div className="rounded-2xl border border-[#ff7a17]/20 bg-gradient-to-br from-[#ff7a17]/[0.07] via-transparent to-transparent p-5">
+                        <MonoLabel index="◆" className="mb-3">Repo synthesis</MonoLabel>
+                        <p className="text-[14px] leading-relaxed text-gray-200">{reviewResult.explanation}</p>
+                      </div>
+                    ) : (
+                      <ReportPlaceholder streaming={isStreaming} streamingText="Waiting for the synthesis step…" idleText="No synthesis was produced for this scan." icon={BookOpen} />
                     )}
 
                     {reviewResult.complexity && (
-                       <div className="bg-[#141414] border border-[#212327] rounded-xl p-5 shadow-inner">
-                         <h3 className="text-sm font-semibold text-purple-400 flex items-center gap-2 mb-2">
-                           <Zap className="w-4 h-4" /> Architecture Complexity
-                         </h3>
-                         <p className="text-sm text-[#dadbdf] leading-relaxed font-mono whitespace-pre-wrap">{reviewResult.complexity}</p>
-                       </div>
+                      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+                        <MonoLabel index="◆" className="mb-3">
+                          <Zap className="h-3 w-3 text-[#c4b5fd]" /> Architecture complexity
+                        </MonoLabel>
+                        <p className="whitespace-pre-wrap font-mono text-[12.5px] leading-relaxed text-gray-300">{reviewResult.complexity}</p>
+                      </div>
                     )}
                   </div>
                 )}
 
                 {/* BUGS MODE */}
                 {activeView === 'bugs' && (
-                  <div className="space-y-4 animate-in slide-in-from-right-4">
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                      <Bug className="w-4 h-4 text-rose-400" /> Discovered Bugs
-                    </h3>
+                  <ReportSection icon={Bug} title="Discovered Bugs" count={reviewResult.bugs?.length || 0}>
                     {reviewResult.bugs?.length > 0 ? (
                       reviewResult.bugs.map((bug, idx) => (
-                        <div key={idx} className={cn("bg-[#141414] border border-l-4 rounded-lg p-4 shadow-sm", getSeverityColor(bug.severity))}>
-                           <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-black/20">{bug.severity} | {bug.category}</span>
-                              <span className="text-xs text-[#7d8187] font-mono border border-[#212327] px-2 py-0.5 rounded">{bug.line_ref}</span>
-                           </div>
-                          <p className="text-sm text-[#dadbdf] leading-relaxed">{bug.description}</p>
-                        </div>
+                        <FindingCard key={idx} severity={bug.severity} category={bug.category} lineRef={bug.line_ref} description={bug.description} />
                       ))
                     ) : (
-                      <div className="p-8 text-center border border-dashed border-[#212327] rounded-xl">
-                        {isStreaming ? (
-                           <Loader2 className="w-8 h-8 text-[#7d8187] animate-spin mx-auto mb-3" />
-                        ) : (
-                           <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-3 opacity-50" />
-                        )}
-                        <p className="text-[#7d8187] text-sm">{isStreaming ? "Waiting for bug detection..." : "No bugs were detected across scanned files."}</p>
-                      </div>
+                      <ReportPlaceholder streaming={isStreaming} streamingText="Waiting for bug detection..." idleText="No bugs were detected across scanned files." icon={CheckCircle2} />
                     )}
-                  </div>
+                  </ReportSection>
                 )}
 
                 {/* SECURITY MODE */}
                 {activeView === 'security' && (
-                  <div className="space-y-4 animate-in slide-in-from-right-4">
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                      <ShieldAlert className="w-4 h-4 text-amber-400" /> Security Vulnerabilities
-                    </h3>
+                  <ReportSection icon={ShieldAlert} title="Security Vulnerabilities" count={reviewResult.security?.length || 0}>
                     {reviewResult.security?.length > 0 ? (
                       reviewResult.security.map((sec, idx) => (
-                        <div key={idx} className={cn("bg-[#141414] border border-l-4 rounded-lg p-4 shadow-sm", getSeverityColor(sec.severity))}>
-                           <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-black/20">{sec.severity} | {sec.category}</span>
-                              <span className="text-xs text-[#7d8187] font-mono border border-[#212327] px-2 py-0.5 rounded">{sec.line_ref}</span>
-                           </div>
-                          <p className="text-sm text-[#dadbdf] leading-relaxed">{sec.description}</p>
-                        </div>
+                        <FindingCard key={idx} severity={sec.severity} category={sec.category} lineRef={sec.line_ref} description={sec.description} />
                       ))
                     ) : (
-                      <div className="p-8 text-center border border-dashed border-[#212327] rounded-xl">
-                        {isStreaming ? (
-                           <Loader2 className="w-8 h-8 text-[#7d8187] animate-spin mx-auto mb-3" />
-                        ) : (
-                           <ShieldAlert className="w-8 h-8 text-emerald-400 mx-auto mb-3 opacity-50" />
-                        )}
-                        <p className="text-[#7d8187] text-sm">{isStreaming ? "Waiting for security analysis..." : "No security vulnerabilities detected."}</p>
-                      </div>
+                      <ReportPlaceholder streaming={isStreaming} streamingText="Waiting for security analysis..." idleText="No security vulnerabilities detected." icon={ShieldAlert} />
                     )}
-                  </div>
+                  </ReportSection>
                 )}
 
                 {/* IMPROVEMENTS / REFACTORING MODE */}
                 {activeView === 'improvements' && (
-                  <div className="space-y-4 animate-in slide-in-from-right-4">
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-                      <Wrench className="w-4 h-4 text-blue-400" /> Refactoring Suggestions
-                    </h3>
+                  <ReportSection icon={Wrench} title="Refactoring Suggestions" count={reviewResult.refactoring?.length || 0}>
                     {reviewResult.refactoring?.length > 0 ? (
-                      reviewResult.refactoring.map((imp, idx) => (
-                        <div key={idx} className="bg-[#141414] border border-[#212327] border-l-2 border-l-blue-500 rounded-lg p-4 shadow-sm">
-                          <p className="text-sm text-[#dadbdf] leading-relaxed">{imp}</p>
-                        </div>
-                      ))
+                      <ol className="space-y-2">
+                        {reviewResult.refactoring.map((imp, idx) => (
+                          <li key={idx} className="flex gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+                            <span className="font-mono text-[11px] text-[#ff7a17]">{String(idx + 1).padStart(2, '0')}</span>
+                            <p className="text-[13.5px] leading-relaxed text-gray-300">{imp}</p>
+                          </li>
+                        ))}
+                      </ol>
                     ) : (
-                      <div className="p-8 text-center border border-dashed border-[#212327] rounded-xl">
-                        {isStreaming ? (
-                           <Loader2 className="w-8 h-8 text-[#7d8187] animate-spin mx-auto mb-3" />
-                        ) : (
-                           <p className="text-[#7d8187] text-sm">Architecture looks solid.</p>
-                        )}
-                      </div>
+                      <ReportPlaceholder streaming={isStreaming} streamingText="Waiting for synthesis..." idleText="Architecture looks solid." />
                     )}
-                  </div>
+                  </ReportSection>
                 )}
-                
               </div>
             </div>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+export default function GitIntegrationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center bg-[#0a0a0a]">
+        <Loader2 className="h-5 w-5 animate-spin text-[#ffc285]" />
+      </div>
+    }>
+      <GitIntegrationsContent />
+    </Suspense>
   )
 }

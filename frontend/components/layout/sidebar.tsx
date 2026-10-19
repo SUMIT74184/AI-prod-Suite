@@ -9,7 +9,8 @@ import {
   Lightbulb,
   Search,
   Workflow,
-  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Trash2,
   Settings,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/marketing/site-chrome'
 
 interface ConversationItem {
   id: string
@@ -152,94 +154,111 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex flex-col bg-[#0a0a0a] border-r border-[#212327] transition-all duration-300',
-        isCollapsed ? 'w-16' : 'w-64'
+        'relative flex h-full shrink-0 flex-col border-r border-white/[0.06] bg-[#070708] transition-[width] duration-300',
+        isCollapsed ? 'w-[68px]' : 'w-[264px]'
       )}
     >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_80%_100%_at_0%_0%,rgba(255,122,23,0.07),transparent)]" />
+
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#212327]">
-        {!isCollapsed && (
-          <Link href="/" className="text-[15px] font-medium text-white flex items-center gap-2.5 tracking-tight hover:opacity-80 transition-opacity">
-            <img src="/ProdSuite.png" alt="ProdSuite Logo" className="w-6 h-6 rounded object-cover" />
-            ProdSuite
-          </Link>
-        )}
+      <div className={cn('relative flex h-16 shrink-0 items-center border-b border-white/[0.06]', isCollapsed ? 'justify-center' : 'justify-between px-4')}>
+        {!isCollapsed && <Logo />}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 hover:bg-[#1a1c20] rounded-lg transition-colors"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-white/[0.06] hover:text-white"
           aria-label="Toggle sidebar"
         >
-          <Menu className="w-4 h-4 text-[#7d8187]" />
+          {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
       </div>
 
       {/* New Conversation Button */}
-      {!isCollapsed && (
-        <div className="px-3 mt-4">
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-full border border-[rgba(255,255,255,0.25)] text-white text-sm font-normal hover:border-[rgba(255,255,255,0.5)] hover:bg-[rgba(255,255,255,0.05)] transition-all">
-            <Plus className="w-3.5 h-3.5" />
-            New Chat
-          </button>
-        </div>
-      )}
+      <div className="relative mt-4 px-3">
+        <button
+          className={cn(
+            'group flex w-full items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.03] text-[13px] text-gray-200 transition-all hover:border-white/25 hover:bg-white/[0.06] hover:text-white',
+            isCollapsed ? 'h-10 justify-center' : 'px-3.5 py-2'
+          )}
+          title={isCollapsed ? 'New chat' : undefined}
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-black transition-colors group-hover:bg-[#ffc285]">
+            <Plus className="h-3 w-3" strokeWidth={2.5} />
+          </span>
+          {!isCollapsed && <span>New Chat</span>}
+        </button>
+      </div>
 
       {/* Modules Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-4 pb-32">
-        <div className={!isCollapsed ? 'mb-6' : 'mb-4'}>
-          {!isCollapsed && (
-            <p className="px-3 xai-caption-mono-sm text-[#7d8187] mb-3">
-              Modules
-            </p>
-          )}
-          <div className="space-y-1">
-            {modules.map(module => {
-              const Icon = module.icon
-              const isActive = pathname.includes(module.id)
-              const isExpanded = expandedModules[module.id]
-              const moduleConvs = conversations.filter(c => c.module === module.id)
+      <nav className="relative flex-1 overflow-y-auto px-3 py-5">
+        {!isCollapsed && (
+          <div className="mb-3 flex items-center gap-2.5 px-2 font-mono text-[10.5px] uppercase tracking-[0.16em] text-gray-500">
+            <span className="text-[#ff7a17]">//</span>
+            Workspace
+          </div>
+        )}
+        <div className="space-y-0.5">
+          {modules.map((module, moduleIdx) => {
+            const Icon = module.icon
+            const isActive = pathname.includes(module.id)
+            const isExpanded = expandedModules[module.id]
+            const moduleConvs = conversations.filter(c => c.module === module.id)
 
-              return (
-                <div key={module.id} className="mb-1">
-                  <div className={cn(
-                    'group flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200',
-                    isActive
-                      ? 'bg-[#1a1c20] text-white border-l-2 border-white'
-                      : 'text-[#7d8187] hover:text-white hover:bg-[#1a1c20]/50'
-                  )}>
-                    <Link
-                      href={`/modules/${module.id}`}
-                      className="flex items-center gap-3 flex-1 min-w-0"
-                      title={isCollapsed ? module.label : undefined}
+            return (
+              <div key={module.id}>
+                <div
+                  className={cn(
+                    'group relative flex items-center rounded-xl transition-colors duration-200',
+                    isCollapsed ? 'justify-center p-1.5' : 'gap-1 py-1.5 pl-1.5 pr-1.5',
+                    isActive ? 'bg-white/[0.05] text-white' : 'text-gray-400 hover:bg-white/[0.03] hover:text-white'
+                  )}
+                >
+                  {isActive && <span className="absolute -left-3 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#ff7a17] shadow-[0_0_10px_#ff7a17]" />}
+                  <Link
+                    href={`/modules/${module.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-3"
+                    title={isCollapsed ? module.label : undefined}
+                  >
+                    <span
+                      className={cn(
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-colors',
+                        isActive
+                          ? 'border-[#ff7a17]/30 bg-[#ff7a17]/10 text-[#ffc285]'
+                          : 'border-white/[0.06] bg-white/[0.02] text-gray-500 group-hover:text-gray-200'
+                      )}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      {!isCollapsed && <span className="text-sm font-normal truncate">{module.label}</span>}
-                    </Link>
-                    
-                    {!isCollapsed && moduleConvs.length > 0 && (
-                      <button
-                        onClick={(e) => toggleModule(e, module.id)}
-                        className="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded-md transition-colors"
-                        aria-label="Toggle folder"
-                      >
-                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      </button>
-                    )}
-                  </div>
+                      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    </span>
+                    {!isCollapsed && <span className="truncate text-[13.5px]">{module.label}</span>}
+                  </Link>
 
-                  {/* Nested Conversations History */}
-                  {!isCollapsed && isExpanded && moduleConvs.length > 0 && (
-                    <div className="mt-1 ml-4 border-l border-[#212327] pl-2 space-y-0.5">
-                      {moduleConvs.map(conv => (
-                        <div key={conv.id} className="relative group/item">
+                  {!isCollapsed && (moduleConvs.length > 0 ? (
+                    <button
+                      onClick={(e) => toggleModule(e, module.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-white/[0.08] hover:text-white"
+                      aria-label="Toggle folder"
+                    >
+                      {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    </button>
+                  ) : (
+                    <span className="pr-1.5 font-mono text-[10px] text-gray-600">0{moduleIdx + 1}</span>
+                  ))}
+                </div>
+
+                {/* Nested Conversations History */}
+                {!isCollapsed && isExpanded && moduleConvs.length > 0 && (
+                  <div className="mb-2 ml-[22px] mt-1 space-y-px border-l border-white/[0.06] pl-2.5">
+                    {moduleConvs.map(conv => {
+                      const isCurrent = pathname.includes(conv.module) && typeof window !== 'undefined' && window.location.search.includes(conv.id)
+                      return (
+                        <div key={conv.id} className="group/item relative">
                           <Link
                             href={`/modules/${conv.module}?sessionId=${conv.id}`}
                             className={cn(
-                              "flex items-center px-3 py-1.5 rounded-lg hover:bg-[#1a1c20]/50 transition-colors overflow-hidden",
-                              pathname.includes(conv.module) && (typeof window !== 'undefined' && window.location.search.includes(conv.id))
-                                ? "bg-[#1a1c20]/30 text-white" 
-                                : "text-[#7d8187]"
+                              'flex items-center gap-2 overflow-hidden rounded-lg px-2 py-1.5 transition-colors',
+                              isCurrent ? 'bg-white/[0.04] text-white' : 'text-gray-500 hover:bg-white/[0.03] hover:text-gray-200'
                             )}
                           >
+                            {isCurrent && <span className="h-1 w-1 shrink-0 rounded-full bg-[#ff7a17]" />}
                             {editingId === conv.id ? (
                               <input
                                 autoFocus
@@ -247,37 +266,37 @@ export default function Sidebar() {
                                 onChange={e => setEditTitle(e.target.value)}
                                 onKeyDown={e => handleKeyDown(e, conv.id)}
                                 onBlur={() => saveEditing(conv.id)}
-                                className="flex-1 bg-transparent text-[13px] text-white outline-none border-b border-[#ff7a17] w-full min-w-0"
+                                className="w-full min-w-0 flex-1 border-b border-[#ff7a17] bg-transparent text-[12.5px] text-white outline-none"
                                 onClick={e => { e.preventDefault(); e.stopPropagation() }}
                               />
                             ) : (
-                              <span className="block text-[13px] group-hover/item:text-white truncate font-normal transition-all duration-200 group-hover/item:pr-6">
+                              <span className="block truncate text-[12.5px] transition-all duration-200 group-hover/item:pr-6">
                                 {conv.title}
                               </span>
                             )}
                           </Link>
-                          
+
                           {/* 3 Dots Menu Button */}
                           {editingId !== conv.id && (
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 flex items-center transition-opacity">
+                            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-hover/item:opacity-100">
                               <button
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
                                   setMenuId(menuId === conv.id ? null : conv.id)
                                 }}
-                                className="conversation-menu-trigger p-1 hover:bg-[#212327] text-[#7d8187] hover:text-white rounded-md transition-colors"
+                                className="conversation-menu-trigger rounded-md p-1 text-gray-500 transition-colors hover:bg-white/[0.08] hover:text-white"
                                 aria-label="Open menu"
                               >
-                                <MoreHorizontal className="w-3.5 h-3.5" />
+                                <MoreHorizontal className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           )}
 
                           {/* Dropdown Menu */}
                           {menuId === conv.id && (
-                            <div 
-                              className="conversation-menu-content absolute right-0 top-8 w-32 bg-[#1a1c20] border border-[#212327] rounded-md shadow-xl z-[100] py-1 overflow-hidden"
+                            <div
+                              className="conversation-menu-content absolute right-0 top-8 z-[100] w-36 overflow-hidden rounded-xl border border-white/10 bg-[#111113]/95 p-1 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl"
                               onClick={e => e.stopPropagation()}
                             >
                               <button
@@ -285,9 +304,9 @@ export default function Sidebar() {
                                   // togglePin(conv.id) placeholder for future pin functionality
                                   setMenuId(null)
                                 }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#dadbdf] hover:text-white hover:bg-[#212327] transition-colors"
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] text-gray-300 transition-colors hover:bg-white/[0.06] hover:text-white"
                               >
-                                <Pin className="w-3.5 h-3.5" />
+                                <Pin className="h-3.5 w-3.5" />
                                 Pin
                               </button>
                               <button
@@ -295,46 +314,68 @@ export default function Sidebar() {
                                   startEditing(e, conv.id, conv.title)
                                   setMenuId(null)
                                 }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#dadbdf] hover:text-white hover:bg-[#212327] transition-colors"
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] text-gray-300 transition-colors hover:bg-white/[0.06] hover:text-white"
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <Edit2 className="h-3.5 w-3.5" />
                                 Rename
                               </button>
+                              <div className="mx-1 my-1 h-px bg-white/[0.06]" />
                               <button
                                 onClick={(e) => {
                                   deleteConversation(conv.id, e)
                                   setMenuId(null)
                                 }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#ff4444] hover:bg-[#ff4444]/10 transition-colors"
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] text-red-300/90 transition-colors hover:bg-red-500/10"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="h-3.5 w-3.5" />
                                 Delete
                               </button>
                             </div>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </nav>
 
       {/* Footer */}
-      {!isCollapsed && (
-        <div className="p-3 border-t border-[#212327]">
-          <Link
-            href="/modules/settings"
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#7d8187] hover:text-white hover:bg-[#1a1c20]/50 rounded-lg transition-all font-normal"
-          >
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
-          </Link>
-        </div>
-      )}
+      <div className="relative shrink-0 space-y-2 border-t border-white/[0.06] p-3">
+        <Link
+          href="/modules/settings"
+          title={isCollapsed ? 'Settings' : undefined}
+          className={cn(
+            'flex items-center gap-3 rounded-xl text-[13.5px] transition-colors',
+            isCollapsed ? 'justify-center p-1.5' : 'px-1.5 py-1.5',
+            pathname.includes('/settings') ? 'bg-white/[0.05] text-white' : 'text-gray-400 hover:bg-white/[0.03] hover:text-white'
+          )}
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02]">
+            <Settings className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </span>
+          {!isCollapsed && <span>Settings</span>}
+        </Link>
+        {!isCollapsed && (
+          <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#ffc285] to-[#ff7a17] font-mono text-[11px] text-black">
+                {userId.slice(0, 1).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[12.5px] text-gray-200">{userId}</p>
+                <p className="flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-gray-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+                  Agents online
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }

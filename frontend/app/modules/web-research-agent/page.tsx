@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 // export const dynamic = 'force-dynamic'
-import { Loader2, Download, CheckCircle2, Circle, AlertCircle, Globe, Search, BookOpen, Brain, FileText, ArrowRight } from 'lucide-react'
+import { Loader2, Download, CheckCircle2, AlertCircle, Globe, Search, BookOpen, Brain, FileText, ArrowRight, ArrowUpRight, Check, ChevronRight, Copy, Plus, RotateCw, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSearchParams, useRouter } from 'next/navigation'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { Markdown, extractHeadings } from '@/components/workspace/markdown'
+import { ModuleHeader, MonoLabel, StatusDot, Kbd, ui } from '@/components/workspace/kit'
+import { SegmentTabs } from '@/components/workspace/review-report'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +68,10 @@ function WebResearchAgentContent() {
     sections?: string[]
   }>({})
   const abortRef = useRef<AbortController | null>(null)
+
+  // Studio UI state
+  const [view, setView] = useState<'report' | 'activity'>('report')
+  const [copied, setCopied] = useState(false)
 
   // ---------------------------------------------------------------------------
   // Load Session History
@@ -309,309 +314,486 @@ function WebResearchAgentContent() {
   // Render
   // ---------------------------------------------------------------------------
 
+  const inStudio = isResearching || !!result
+  const headings = result?.report ? extractHeadings(result.report).filter(h => h.level > 1) : []
+  const wordCount = result?.report ? result.report.split(/\s+/).filter(Boolean).length : 0
+  const searchDone = steps.find(s => s.id === 'search')?.status === 'done'
+
+  const handleCopyReport = () => {
+    if (!result?.report) return
+    navigator.clipboard.writeText(result.report)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleComposerKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleResearch()
+    }
+  }
+
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
-
-      {/* Header */}
-      <div className="border-b border-[#212327] px-6 py-4 flex-shrink-0">
-        <p className="xai-caption-mono-sm text-[#7d8187] mb-1">Research</p>
-        <h1 className="xai-display-xs text-white">Web Research Agent</h1>
-        <p className="text-sm text-[#7d8187] mt-1 font-normal">
-          LangGraph multi-step agent · plan → search → read → analyze → report
-        </p>
-      </div>
-
-      {/* Search Input */}
-      <div className="px-6 py-5 flex-shrink-0 border-b border-[#212327]">
-        <div className="max-w-2xl flex gap-3">
-          <div className="flex-1 flex items-center gap-2 bg-[#191919] border border-[#212327] rounded-full px-4 py-2.5 focus-within:border-[rgba(255,255,255,0.25)] transition-all">
-            <Globe className="w-4 h-4 text-[#7d8187] flex-shrink-0" />
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleResearch()}
-              placeholder="Enter a research topic — e.g. 'LangGraph for production AI agents'"
-              disabled={isResearching}
-              className="flex-1 bg-transparent text-white placeholder-[#7d8187] focus:outline-none text-sm font-normal"
-            />
-          </div>
-          <button
-            onClick={handleResearch}
-            disabled={isResearching || !query.trim()}
-            className={cn(
-              'px-5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
-              isResearching || !query.trim()
-                ? 'bg-[#191919] text-[#7d8187] border border-[#212327]'
-                : 'bg-white text-[#0a0a0a] hover:opacity-90'
-            )}
-          >
-            {isResearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-            {isResearching ? 'Researching…' : 'Research'}
+    <div className="flex h-full flex-col overflow-hidden bg-[#0a0a0a]">
+      <ModuleHeader
+        index="M.04"
+        section="Research"
+        title="Web Research"
+        accent="Agent"
+        description="LangGraph multi-step agent · plan → search → read → analyze → report"
+        actions={inStudio && !isResearching && (
+          <button onClick={() => router.push('/modules/web-research-agent')} className={ui.btnOutline}>
+            <Plus className="h-3.5 w-3.5" />
+            New research
           </button>
+        )}
+      />
+
+      {!inStudio ? (
+        /* ─── Start page ─── */
+        <div className="relative min-h-0 flex-1 overflow-y-auto">
+          <div className="lab-grid-bg lab-grid-fade pointer-events-none absolute inset-0 opacity-70" />
+          <div className="lab-aurora pointer-events-none absolute left-1/2 top-10 h-[320px] w-[720px] rounded-full bg-[radial-gradient(closest-side,rgba(255,122,23,0.14),rgba(124,58,237,0.08),transparent)] blur-2xl" />
+
+          <div className="relative mx-auto max-w-3xl px-6 pb-16 pt-14">
+            <div className="lab-enter">
+              <MonoLabel index="◆">Deep research</MonoLabel>
+              <h2 className="mt-4 text-[40px] leading-[1.05] tracking-[-0.035em] text-white">
+                What should the agents <span className="lab-serif lab-accent-gradient pr-1">look into?</span>
+              </h2>
+              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-gray-400">
+                The LangGraph agent will plan, search, read pages, analyze, and write a comprehensive report automatically.
+              </p>
+            </div>
+
+            {/* Composer */}
+            <div className="lab-enter ws-field mt-8 rounded-2xl p-2 shadow-[0_30px_80px_-40px_rgba(255,122,23,0.45)]" style={{ animationDelay: '100ms' }}>
+              <textarea
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={handleComposerKey}
+                rows={3}
+                autoFocus
+                placeholder="Enter a research topic — e.g. 'LangGraph for production AI agents'"
+                className="w-full resize-none bg-transparent px-3 pt-2 text-[16px] leading-relaxed text-white placeholder-gray-600 outline-none"
+              />
+              <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-2 pt-2">
+                <span className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-gray-600">
+                  <Globe className="h-3.5 w-3.5 text-[#ffc285]" />
+                  Live web · cited sources
+                </span>
+                <div className="flex items-center gap-2.5">
+                  <span className="hidden text-[11px] text-gray-600 sm:inline"><Kbd>↵</Kbd> run · <Kbd>⇧↵</Kbd> newline</span>
+                  <button onClick={handleResearch} disabled={!query.trim()} className={cn(ui.btnPrimary, 'h-9')}>
+                    Research
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Suggestions */}
+            <div className="lab-enter mt-4 grid gap-2 sm:grid-cols-3" style={{ animationDelay: '200ms' }}>
+              {SUGGESTIONS.map(s => (
+                <button
+                  key={s.q}
+                  onClick={() => setQuery(s.q)}
+                  className="group flex flex-col gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5 text-left transition-all hover:border-[#ff7a17]/35 hover:bg-[#ff7a17]/[0.04]"
+                >
+                  <span className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-gray-600">
+                    {s.tag}
+                    <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </span>
+                  <span className="text-[13.5px] leading-snug text-gray-300 group-hover:text-white">{s.q}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* How it works */}
+            <div className="lab-enter mt-14" style={{ animationDelay: '300ms' }}>
+              <MonoLabel index="01" className="mb-5">How the agent works</MonoLabel>
+              <GraphFlow />
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* ─── Studio ─── */
+        <div className="flex min-h-0 flex-1 gap-3 p-3">
+          {/* LEFT: run panel */}
+          <aside className="flex w-[340px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-[#070708]">
+            <div className="border-b border-white/[0.06] p-4">
+              <MonoLabel index="01" className="mb-2.5">Question</MonoLabel>
+              <div className="ws-field flex items-start gap-2 rounded-xl p-1.5">
+                <textarea
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={handleComposerKey}
+                  disabled={isResearching}
+                  rows={2}
+                  className="min-h-[44px] flex-1 resize-none bg-transparent px-2 py-1 text-[14px] leading-snug text-white outline-none disabled:opacity-70"
+                />
+                <button
+                  onClick={handleResearch}
+                  disabled={isResearching || !query.trim()}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-black transition-colors hover:bg-[#ffc285] disabled:bg-white/[0.06] disabled:text-gray-500"
+                  title="Run again"
+                >
+                  {isResearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden grid grid-cols-4 gap-0">
-
-        {/* Left Sidebar: Agent Progress */}
-        <div className="col-span-1 border-r border-[#212327] p-5 overflow-y-auto">
-          <p className="xai-caption-mono-sm text-[#7d8187] mb-5">Agent Steps</p>
-
-          <div className="space-y-1">
-            {steps.map((step, idx) => (
-              <div key={step.id}>
-                <div className={cn(
-                  'flex items-start gap-3 p-3 rounded-xl transition-all',
-                  step.status === 'active' && 'bg-[#1a1c20] border border-[#212327]',
-                  step.status === 'done' && 'opacity-60',
-                )}>
-                  {/* Status icon */}
-                  <div className="mt-0.5 flex-shrink-0">
-                    {step.status === 'pending' && <Circle className="w-5 h-5 text-[#3a3a3a]" />}
-                    {step.status === 'active' && <Loader2 className="w-5 h-5 text-white animate-spin" />}
-                    {step.status === 'done' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                    {step.status === 'error' && <AlertCircle className="w-5 h-5 text-red-400" />}
-                  </div>
-                  {/* Label */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn('text-sm font-medium', step.status === 'pending' ? 'text-[#7d8187]' : 'text-white')}>
-                        {step.label}
+            <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-4">
+              {/* Agent trace */}
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <MonoLabel index="02">Agent graph</MonoLabel>
+                  {result && result.iteration > 0 && <span className={ui.chip}>{result.iteration} loop{result.iteration !== 1 ? 's' : ''}</span>}
+                </div>
+                <ol>
+                  {steps.map((step, idx) => (
+                    <li key={step.id} className="relative flex gap-3 pb-4 last:pb-0">
+                      {idx < steps.length - 1 && (
+                        <span className={cn(
+                          'absolute left-[13px] top-7 h-[calc(100%-24px)] w-px',
+                          step.status === 'done' ? 'bg-gradient-to-b from-emerald-400/50 to-white/10' : 'bg-white/[0.07]'
+                        )} />
+                      )}
+                      <span className={cn(
+                        'relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-all duration-500',
+                        step.status === 'pending' && 'border-white/10 bg-[#0d0e10] text-gray-600',
+                        step.status === 'active' && 'border-[#ff7a17]/60 bg-[#1a120b] text-[#ffc285] shadow-[0_0_20px_rgba(255,122,23,0.35)]',
+                        step.status === 'done' && 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300',
+                        step.status === 'error' && 'border-red-400/40 bg-red-500/10 text-red-300',
+                      )}>
+                        {step.status === 'active' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+                          step.status === 'done' ? <Check className="h-3.5 w-3.5" /> :
+                          step.status === 'error' ? <AlertCircle className="h-3.5 w-3.5" /> :
+                          <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{step.icon}</span>}
                       </span>
-                    </div>
-                    <p className="text-[10px] font-mono text-[#4a4a4a] mt-0.5 truncate">{step.message}</p>
-                  </div>
-                </div>
-
-                {/* Connector line between steps */}
-                {idx < steps.length - 1 && (
-                  <div className="ml-[22px] w-px h-3 bg-[#1e1e1e]" />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Sub-queries */}
-          {subQueries.length > 0 && (
-            <div className="mt-6">
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-3">Sub-queries</p>
-              <div className="space-y-2">
-                {subQueries.map((q, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <Search className="w-3 h-3 text-[#7d8187] mt-0.5 flex-shrink-0" />
-                    <p className="text-[11px] text-[#9ca3af] font-normal leading-snug">{q}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sources */}
-          {sources.length > 0 && (
-            <div className="mt-6">
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-3">Sources ({sources.length})</p>
-              <div className="space-y-1.5">
-                {sources.slice(0, 10).map((url, i) => (
-                  <a
-                    key={i}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-[10px] font-mono text-[#4a4a4a] hover:text-[#7d8187] transition-colors truncate"
-                  >
-                    <Globe className="w-3 h-3 flex-shrink-0" />
-                    {new URL(url).hostname.replace('www.', '')}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Report Area */}
-        <div className="col-span-3 flex flex-col overflow-hidden">
-          {/* Report toolbar */}
-          <div className="border-b border-[#212327] px-6 py-3 flex items-center justify-between flex-shrink-0">
-            <p className="xai-caption-mono-sm text-[#7d8187]">Research Report</p>
-            {result?.report && (
-              <button
-                onClick={handleExport}
-                className="flex items-center gap-1.5 text-xs font-mono text-[#7d8187] hover:text-white transition-colors px-3 py-1.5 rounded-full border border-[#212327] hover:border-[rgba(255,255,255,0.2)]"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Export .md
-              </button>
-            )}
-          </div>
-
-          {/* Report content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Empty state */}
-            {!isResearching && !result && (
-              <div className="h-full flex flex-col items-center justify-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-[#191919] border border-[#212327] flex items-center justify-center">
-                  <Globe className="w-8 h-8 text-[#3a3a3a]" />
-                </div>
-                <div>
-                  <p className="text-white font-medium mb-1">Enter a topic to research</p>
-                  <p className="text-sm text-[#7d8187] font-normal max-w-sm">
-                    The LangGraph agent will plan, search, read pages, analyze,
-                    and write a comprehensive report automatically.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center mt-2">
-                  {['LangGraph production guide', 'RAG vs fine-tuning comparison', 'AI agent frameworks 2024'].map(suggestion => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setQuery(suggestion)}
-                      className="text-xs font-mono text-[#7d8187] px-3 py-1.5 rounded-full border border-[#212327] hover:border-[rgba(255,255,255,0.2)] hover:text-white transition-all"
-                    >
-                      {suggestion}
-                    </button>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <p className={cn('text-[13px]', step.status === 'pending' ? 'text-gray-500' : 'text-white')}>{step.label}</p>
+                        <p className={cn('mt-0.5 truncate font-mono text-[10.5px]', step.status === 'active' ? 'text-[#ffc285]' : 'text-gray-600')}>{step.message}</p>
+                      </div>
+                    </li>
                   ))}
-                </div>
+                </ol>
               </div>
-            )}
 
-            {/* Loading state */}
-            {isResearching && !result && (
-              <div className="h-full flex flex-col items-center justify-start gap-6 py-10 max-w-2xl mx-auto overflow-y-auto">
-                <div className="flex items-center gap-3 mt-4 mb-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#7d8187]" />
-                  <p className="text-white font-medium text-lg">Agent is actively researching…</p>
+              {/* Sub-queries */}
+              {subQueries.length > 0 && (
+                <div>
+                  <MonoLabel index="03" className="mb-3">Sub-queries · {subQueries.length}</MonoLabel>
+                  <ol className="space-y-1">
+                    {subQueries.map((q, i) => (
+                      <li key={i} className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 animate-in fade-in slide-in-from-left-2" style={{ animationDelay: `${i * 80}ms` }}>
+                        <span className={cn('mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border', searchDone ? 'border-emerald-400/30 text-emerald-300' : 'border-white/15 text-gray-600')}>
+                          {searchDone ? <Check className="h-2.5 w-2.5" /> : <span className="h-1 w-1 rounded-full bg-current" />}
+                        </span>
+                        <p className="text-[12.5px] leading-snug text-gray-400">{q}</p>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
-                
-                {/* Live Activity Cards */}
-                <div className="w-full space-y-4 pb-12">
-                  {/* Search Results Preview */}
-                  {liveInsights.topResults && liveInsights.topResults.length > 0 && (
-                     <div className="bg-[#191919] border border-[#212327] rounded-xl p-5 w-full animate-in fade-in slide-in-from-bottom-4">
-                       <div className="flex items-center gap-2 mb-3">
-                         <Search className="w-4 h-4 text-[#7d8187]" />
-                         <h3 className="text-sm font-medium text-white">Latest Search Findings</h3>
-                       </div>
-                       <div className="space-y-3">
-                         {liveInsights.topResults.slice(0, 3).map((res, i) => (
-                           <div key={i} className="text-sm">
-                             <p className="text-[#dadbdf] font-medium truncate">{res.title}</p>
-                             <p className="text-xs text-[#7d8187] truncate mt-0.5">{res.url}</p>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                  )}
+              )}
 
-                  {/* Reading Pages Preview */}
-                  {liveInsights.pagePreviews && liveInsights.pagePreviews.length > 0 && (
-                     <div className="bg-[#191919] border border-[#212327] rounded-xl p-5 w-full animate-in fade-in slide-in-from-bottom-4">
-                       <div className="flex items-center gap-2 mb-3">
-                         <BookOpen className="w-4 h-4 text-[#7d8187]" />
-                         <h3 className="text-sm font-medium text-white">Reading Source Material</h3>
-                       </div>
-                       <div className="space-y-2">
-                         {liveInsights.pagePreviews.map((page, i) => (
-                           <div key={i} className="flex items-center justify-between text-sm">
-                             <p className="text-[#dadbdf] font-medium truncate pr-4">{page.title || page.url}</p>
-                             <span className="text-xs font-mono text-[#7d8187] flex-shrink-0">{page.word_count} words</span>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                  )}
-
-                  {/* Analysis Synthesis Preview */}
-                  {liveInsights.synthesis && (
-                     <div className="bg-[#191919] border border-[#212327] rounded-xl p-5 w-full animate-in fade-in slide-in-from-bottom-4">
-                       <div className="flex items-center gap-2 mb-3">
-                         <Brain className="w-4 h-4 text-[#7d8187]" />
-                         <h3 className="text-sm font-medium text-white">Live Synthesis</h3>
-                         {liveInsights.confidence && (
-                            <span className={cn(
-                              "ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full border",
-                              liveInsights.confidence === 'high' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                            )}>
-                              {liveInsights.confidence === 'high' ? 'Sufficient Data' : 'Needs More Info'}
-                            </span>
-                         )}
-                       </div>
-                       <p className="text-sm text-[#dadbdf] leading-relaxed">{liveInsights.synthesis}</p>
-                       {liveInsights.gaps && (
-                         <div className="mt-3 pt-3 border-t border-[#212327]">
-                           <p className="text-xs text-[#7d8187] font-medium mb-1">Identified Gaps:</p>
-                           <p className="text-sm text-[#dadbdf]">{liveInsights.gaps}</p>
-                         </div>
-                       )}
-                     </div>
-                  )}
-
-                  {/* Report Writing Preview */}
-                  {liveInsights.reportPreview && (
-                     <div className="bg-[#191919] border border-[#212327] rounded-xl p-5 w-full animate-in fade-in slide-in-from-bottom-4">
-                       <div className="flex items-center gap-2 mb-3">
-                         <FileText className="w-4 h-4 text-[#7d8187]" />
-                         <h3 className="text-sm font-medium text-white">Drafting Report</h3>
-                       </div>
-                       <div className="prose prose-invert prose-sm max-w-none">
-                          <p className="text-[#dadbdf] opacity-70 whitespace-pre-wrap blur-[0.5px]">{liveInsights.reportPreview}</p>
-                       </div>
-                     </div>
-                  )}
+              {/* Sources */}
+              {sources.length > 0 && (
+                <div>
+                  <MonoLabel index="04" className="mb-3">Sources · {sources.length}</MonoLabel>
+                  <div className="space-y-1">
+                    {sources.slice(0, 12).map((url, i) => {
+                      const { host, path } = splitUrl(url)
+                      return (
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 transition-colors hover:border-white/[0.07] hover:bg-white/[0.03] animate-in fade-in"
+                        >
+                          <SourceAvatar host={host} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[12.5px] text-gray-200">{host}</p>
+                            <p className="truncate font-mono text-[10px] text-gray-600">{path || '/'}</p>
+                          </div>
+                          <span className="font-mono text-[10px] text-gray-700 group-hover:hidden">[{i + 1}]</span>
+                          <ArrowUpRight className="hidden h-3 w-3 text-gray-400 group-hover:block" />
+                        </a>
+                      )
+                    })}
+                  </div>
                 </div>
+              )}
+            </div>
+          </aside>
 
-                <div className="w-full text-center pb-8 flex-shrink-0">
-                  <p className="text-xs text-[#7d8187] font-mono">
-                    {streamLog[streamLog.length - 1] || 'Initializing...'}
+          {/* RIGHT: report / live notebook */}
+          <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0b0b0c]">
+            <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-4">
+              {result?.report ? (
+                <SegmentTabs
+                  value={view}
+                  onChange={setView}
+                  tabs={[
+                    { id: 'report', label: 'Report' },
+                    { id: 'activity', label: `Activity ${streamLog.length || ''}`.trim() },
+                  ]}
+                />
+              ) : (
+                <span className="flex items-center gap-2.5 font-mono text-[10.5px] uppercase tracking-[0.16em] text-gray-400">
+                  <StatusDot tone="live" /> Live notebook
+                </span>
+              )}
+              {result?.report && (
+                <div className="flex items-center gap-1">
+                  <button onClick={handleCopyReport} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10.5px] uppercase tracking-wider text-gray-500 transition-colors hover:bg-white/[0.06] hover:text-white">
+                    {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                  <button onClick={handleExport} className={cn(ui.btnOutline, 'py-1')}>
+                    <Download className="h-3.5 w-3.5" />
+                    Export .md
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="relative min-h-0 flex-1 overflow-y-auto">
+              {/* Live notebook while running */}
+              {isResearching && !result && (
+                <div className="mx-auto max-w-2xl px-6 py-8">
+                  <p className="mb-8 text-[22px] leading-snug tracking-[-0.02em] text-white">
+                    Researching <span className="lab-serif text-[#ffc285]">“{query}”</span>
                   </p>
-                </div>
-              </div>
-            )}
 
-            {/* Report */}
-            {result?.report && (
-              <div className="max-w-3xl mx-auto">
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mt-6 mb-4" {...props} />,
-                      h2: ({node, ...props}) => <h2 className="text-lg font-bold text-white mt-5 mb-3" {...props} />,
-                      h3: ({node, ...props}) => <h3 className="text-base font-bold text-white mt-4 mb-2" {...props} />,
-                      p: ({node, ...props}) => <p className="mb-4 text-[#dadbdf] leading-relaxed text-sm" {...props} />,
-                      ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-2 mb-4 text-[#dadbdf] text-sm" {...props} />,
-                      ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-2 mb-4 text-[#dadbdf] text-sm" {...props} />,
-                      li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-                      strong: ({node, ...props}) => <strong className="font-semibold text-white" {...props} />,
-                      em: ({node, ...props}) => <em className="italic text-[#dadbdf]" {...props} />,
-                      code: ({node, ...props}) => <code className="px-1.5 py-0.5 mx-0.5 rounded bg-[#202020] border border-[#2d2d2d] text-[#ffc285] font-mono text-[13px]" {...props} />,
-                      blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-[#ff7a17] pl-4 py-2 my-4 text-[#a1a1aa] italic bg-[#161616] rounded-r text-sm" {...props} />,
-                      table: ({node, ...props}) => (
-                        <div className="overflow-x-auto my-6">
-                          <table className="w-full text-left border-collapse text-sm text-[#dadbdf]" {...props} />
+                  <ol className="relative space-y-4 border-l border-white/[0.07] pl-6">
+                    <NotebookEntry icon={Brain} label="Plan" done={subQueries.length > 0} waiting="Breaking the question into sub-queries…">
+                      {subQueries.length > 0 && <p className="text-[13.5px] text-gray-300">{subQueries.length} sub-queries planned — see the left panel.</p>}
+                    </NotebookEntry>
+
+                    {(liveInsights.topResults?.length || steps.find(s => s.id === 'search')?.status === 'active') && (
+                      <NotebookEntry icon={Search} label="Latest search findings" done={!!liveInsights.topResults?.length} waiting="Searching the web…">
+                        {liveInsights.topResults && (
+                          <div className="space-y-2.5">
+                            {liveInsights.topResults.slice(0, 3).map((res, i) => (
+                              <div key={i} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                                <p className="truncate text-[13px] text-gray-200">{res.title}</p>
+                                <p className="mt-0.5 truncate font-mono text-[10.5px] text-gray-600">{res.url}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </NotebookEntry>
+                    )}
+
+                    {liveInsights.pagePreviews && liveInsights.pagePreviews.length > 0 && (
+                      <NotebookEntry icon={BookOpen} label="Reading source material" done>
+                        <div className="space-y-1.5">
+                          {liveInsights.pagePreviews.map((page, i) => (
+                            <div key={i} className="flex items-center justify-between gap-4">
+                              <p className="truncate text-[13px] text-gray-300">{page.title || page.url}</p>
+                              <span className="shrink-0 font-mono text-[10.5px] text-gray-500">{page.word_count} words</span>
+                            </div>
+                          ))}
                         </div>
-                      ),
-                      thead: ({node, ...props}) => <thead className="bg-[#1a1c20]" {...props} />,
-                      th: ({node, ...props}) => <th className="px-4 py-3 border border-[#212327] font-semibold text-white" {...props} />,
-                      td: ({node, ...props}) => <td className="px-4 py-3 border border-[#212327]" {...props} />,
-                    }}
-                  >
-                    {result.report}
-                  </ReactMarkdown>
-                </div>
+                      </NotebookEntry>
+                    )}
 
-                {/* Metadata footer */}
-                <div className="mt-8 pt-6 border-t border-[#212327] flex items-center gap-6 text-[10px] font-mono text-[#4a4a4a]">
-                  <span>{result.sources.length} sources</span>
-                  <span>{result.sub_queries.length} sub-queries</span>
-                  <span>{result.iteration} search iteration{result.iteration !== 1 ? 's' : ''}</span>
-                  <span>{result.report.length.toLocaleString()} chars</span>
+                    {liveInsights.synthesis && (
+                      <NotebookEntry
+                        icon={Brain}
+                        label="Live synthesis"
+                        done
+                        badge={liveInsights.confidence && (
+                          <span className={cn(
+                            'rounded-full border px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider',
+                            liveInsights.confidence === 'high' ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/25 bg-amber-500/10 text-amber-300'
+                          )}>
+                            {liveInsights.confidence === 'high' ? 'Sufficient Data' : 'Needs More Info'}
+                          </span>
+                        )}
+                      >
+                        <p className="text-[13.5px] leading-relaxed text-gray-300">{liveInsights.synthesis}</p>
+                        {liveInsights.gaps && (
+                          <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-gray-400">
+                            <span className="mr-2 font-mono text-[10px] uppercase tracking-[0.14em] text-gray-500">Gaps</span>
+                            {liveInsights.gaps}
+                          </p>
+                        )}
+                      </NotebookEntry>
+                    )}
+
+                    {liveInsights.reportPreview && (
+                      <NotebookEntry icon={FileText} label="Drafting report" done={false} waiting="">
+                        <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-gray-400 [mask-image:linear-gradient(180deg,#000_40%,transparent)]">{liveInsights.reportPreview}</p>
+                      </NotebookEntry>
+                    )}
+                  </ol>
+
+                  <div className="mt-8 rounded-xl border border-white/[0.06] bg-[#0c0d0f] px-4 py-3 font-mono text-[11.5px] text-gray-500">
+                    <span className="text-[#ff7a17]">❯</span> {streamLog[streamLog.length - 1] || 'Initializing...'}
+                    <span className="lab-caret ml-1 text-gray-400">▍</span>
+                  </div>
                 </div>
+              )}
+
+              {/* Final report */}
+              {result?.report && view === 'report' && (
+                <div className="mx-auto flex max-w-[1080px] gap-10 px-6 py-10">
+                  <article className="min-w-0 max-w-[720px] flex-1">
+                    <div className="mb-8 border-b border-white/[0.06] pb-6">
+                      <MonoLabel index="◆">Research report</MonoLabel>
+                      <p className="mt-3 text-[13px] text-gray-500">
+                        Answering <span className="lab-serif text-[15px] text-gray-300">“{query}”</span>
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        <span className={ui.chip}><Globe className="h-3 w-3 text-[#ffc285]" />{result.sources.length} sources</span>
+                        <span className={ui.chip}>{result.sub_queries.length} sub-queries</span>
+                        <span className={ui.chip}>{result.iteration} search iteration{result.iteration !== 1 ? 's' : ''}</span>
+                        <span className={ui.chip}>~{Math.max(1, Math.round(wordCount / 220))} min read</span>
+                      </div>
+                    </div>
+                    <Markdown content={result.report} />
+                  </article>
+
+                  {headings.length > 1 && (
+                    <nav className="sticky top-10 hidden w-52 shrink-0 self-start xl:block">
+                      <MonoLabel className="mb-3">On this page</MonoLabel>
+                      <ul className="space-y-0.5 border-l border-white/[0.07]">
+                        {headings.map(h => (
+                          <li key={h.id}>
+                            <button
+                              onClick={() => document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                              className={cn('-ml-px block w-full truncate border-l border-transparent py-1 text-left text-[12.5px] text-gray-500 transition-colors hover:border-[#ff7a17] hover:text-white', h.level === 3 ? 'pl-6' : 'pl-3')}
+                            >
+                              {h.text}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </nav>
+                  )}
+                </div>
+              )}
+
+              {/* Activity log */}
+              {result?.report && view === 'activity' && (
+                <div className="mx-auto max-w-2xl px-6 py-8">
+                  {streamLog.length === 0 ? (
+                    <p className="text-center text-[13px] text-gray-500">This report was loaded from history — no live activity was recorded.</p>
+                  ) : (
+                    <ol className="space-y-1 font-mono text-[12px]">
+                      {streamLog.map((line, i) => {
+                        const m = /^\[(\w+)\]\s*(.*)$/.exec(line)
+                        return (
+                          <li key={i} className="flex gap-3 rounded-lg px-3 py-2 hover:bg-white/[0.02]">
+                            <span className="w-6 shrink-0 text-right text-gray-700">{i + 1}</span>
+                            <span className="w-24 shrink-0 text-[#ffc285]">{m ? m[1] : '·'}</span>
+                            <span className="text-gray-400">{m ? m[2] : line}</span>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Presentational helpers
+// ---------------------------------------------------------------------------
+
+const SUGGESTIONS = [
+  { tag: 'Engineering', q: 'LangGraph production guide' },
+  { tag: 'Comparison', q: 'RAG vs fine-tuning comparison' },
+  { tag: 'Landscape', q: 'AI agent frameworks 2024' },
+]
+
+function splitUrl(url: string): { host: string; path: string } {
+  try {
+    const u = new URL(url)
+    return { host: u.hostname.replace('www.', ''), path: u.pathname === '/' ? '' : u.pathname }
+  } catch {
+    return { host: url, path: '' }
+  }
+}
+
+const AVATAR_TONES = ['#ffc285', '#a0c3ec', '#c4b5fd', '#86efac', '#fca5a5']
+function SourceAvatar({ host }: { host: string }) {
+  const tone = AVATAR_TONES[[...host].reduce((n, c) => n + c.charCodeAt(0), 0) % AVATAR_TONES.length]
+  return (
+    <span
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border font-mono text-[10.5px] uppercase"
+      style={{ color: tone, borderColor: `${tone}33`, backgroundColor: `${tone}14` }}
+    >
+      {host.charAt(0)}
+    </span>
+  )
+}
+
+function NotebookEntry({ icon: Icon, label, done, waiting, badge, children }: { icon: LucideIcon; label: string; done?: boolean; waiting?: string; badge?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <li className="relative animate-in fade-in slide-in-from-bottom-2">
+      <span className={cn(
+        'absolute -left-[37px] top-0 flex h-6 w-6 items-center justify-center rounded-full border',
+        done ? 'border-white/15 bg-[#111113] text-[#ffc285]' : 'border-[#ff7a17]/50 bg-[#1a120b] text-[#ffc285] shadow-[0_0_16px_rgba(255,122,23,0.35)]'
+      )}>
+        {done ? <Icon className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
+      </span>
+      <div className="ws-panel relative overflow-hidden p-4">
+        {!done && <span className="lab-beam pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-[#ff7a17]/[0.06] to-transparent" />}
+        <div className="mb-2.5 flex items-center gap-2.5">
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-gray-400">{label}</span>
+          {badge && <span className="ml-auto">{badge}</span>}
+        </div>
+        {children || (waiting && <p className="text-[13px] text-gray-500">{waiting}</p>)}
+      </div>
+    </li>
+  )
+}
+
+// Static diagram of the research graph (with the analyze → search loop)
+function GraphFlow() {
+  const nodes = [
+    { icon: Brain, label: 'Plan', sub: 'split into sub-queries' },
+    { icon: Search, label: 'Search', sub: 'query the live web' },
+    { icon: BookOpen, label: 'Read', sub: 'fetch & extract pages' },
+    { icon: Brain, label: 'Analyze', sub: 'synthesise · find gaps' },
+    { icon: FileText, label: 'Report', sub: 'cited markdown' },
+  ]
+  return (
+    <div className="relative">
+      <div className="grid grid-cols-5 gap-2">
+        {nodes.map((n, i) => (
+          <div key={n.label} className="relative">
+            <div className="rounded-xl border border-white/[0.07] bg-[#0b0b0c] p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <n.icon className="h-4 w-4 text-[#ffc285]" strokeWidth={1.5} />
+                <span className="font-mono text-[10px] text-gray-700">0{i + 1}</span>
               </div>
+              <p className="text-[13px] text-white">{n.label}</p>
+              <p className="mt-0.5 text-[11.5px] leading-snug text-gray-500">{n.sub}</p>
+            </div>
+            {i < nodes.length - 1 && (
+              <span className="absolute -right-2 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#0a0a0a]">
+                <ChevronRight className="h-2.5 w-2.5 text-gray-500" />
+              </span>
             )}
           </div>
-        </div>
+        ))}
       </div>
+      {/* Loop: Analyze → Search */}
+      <svg className="mt-1 h-10 w-full overflow-visible" viewBox="0 0 500 40" preserveAspectRatio="none" aria-hidden>
+        <path d="M 350 0 C 350 34, 150 34, 150 0" fill="none" stroke="rgba(255,122,23,0.45)" strokeWidth="1" vectorEffect="non-scaling-stroke" className="lab-dash" />
+      </svg>
+      <p className="-mt-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffc285]/70">loops back when it needs more evidence</p>
     </div>
   )
 }
@@ -620,7 +802,7 @@ export default function WebResearchAgentPage() {
   return (
     <Suspense fallback={
       <div className="flex h-full items-center justify-center bg-[#0a0a0a]">
-        <Loader2 className="w-6 h-6 animate-spin text-[#7d8187]" />
+        <Loader2 className="h-5 w-5 animate-spin text-[#ffc285]" />
       </div>
     }>
       <WebResearchAgentContent />

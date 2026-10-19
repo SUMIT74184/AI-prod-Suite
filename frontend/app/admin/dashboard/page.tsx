@@ -99,7 +99,7 @@ export default function AdminDashboard() {
           <h1 className="text-lg font-medium capitalize">{activeTab}</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm font-mono text-gray-500">Timi84@gmail.com</span>
-            <img src="/ProdSuite.png" alt="Logo" className="w-8 h-8 rounded-full border border-white/10" />
+            <img src="/logo.svg" alt="Logo" className="w-8 h-8 rounded-lg" />
           </div>
         </header>
 

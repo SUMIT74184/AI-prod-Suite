@@ -1,75 +1,87 @@
-import { Settings, User, Bell, Shield, Palette } from 'lucide-react';
+import { User, Bell, Shield, Palette } from 'lucide-react';
+import { ModuleHeader, MonoLabel, ui } from '@/components/workspace/kit';
+import { cn } from '@/lib/utils';
+
+const NAV = [
+  { icon: User, label: 'Account', active: true },
+  { icon: Palette, label: 'Appearance' },
+  { icon: Bell, label: 'Notifications' },
+  { icon: Shield, label: 'Security' },
+];
 
 export default function SettingsPage() {
   return (
-    <div className="flex-1 overflow-y-auto bg-[#0a0a0a] p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-8">
-          <p className="xai-caption-mono-sm text-[#7d8187] mb-2">Configuration</p>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-[#1a1c20] border border-[#212327] flex items-center justify-center">
-              <Settings className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="xai-display-xs text-white">Settings</h1>
-          </div>
-          <p className="text-[#7d8187] font-normal">Manage your account settings and preferences.</p>
-        </header>
+    <div className="flex h-full flex-col overflow-hidden bg-[#0a0a0a]">
+      <ModuleHeader
+        index="S.00"
+        section="Configuration"
+        title="Settings"
+        description="Manage your account settings and preferences."
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-[200px_1fr]">
+
           {/* Settings Sidebar */}
-          <div className="col-span-1 space-y-0.5">
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-normal rounded-lg bg-[#1a1c20] text-white border-l-2 border-white transition-colors">
-              <User className="w-4 h-4" /> Account
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-normal rounded-lg text-[#7d8187] hover:bg-[#1a1c20]/50 hover:text-white transition-colors">
-              <Palette className="w-4 h-4" /> Appearance
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-normal rounded-lg text-[#7d8187] hover:bg-[#1a1c20]/50 hover:text-white transition-colors">
-              <Bell className="w-4 h-4" /> Notifications
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-normal rounded-lg text-[#7d8187] hover:bg-[#1a1c20]/50 hover:text-white transition-colors">
-              <Shield className="w-4 h-4" /> Security
-            </button>
-          </div>
+          <nav className="space-y-0.5">
+            {NAV.map(item => (
+              <button
+                key={item.label}
+                className={cn(
+                  'relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] transition-colors',
+                  item.active ? 'bg-white/[0.05] text-white' : 'text-gray-400 hover:bg-white/[0.03] hover:text-white'
+                )}
+              >
+                {item.active && <span className="absolute -left-3 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#ff7a17] shadow-[0_0_10px_#ff7a17]" />}
+                <item.icon className={cn('h-4 w-4', item.active ? 'text-[#ffc285]' : 'text-gray-500')} strokeWidth={1.75} />
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
           {/* Settings Content */}
-          <div className="col-span-1 md:col-span-3 space-y-6">
-            
+          <div className="space-y-6">
+
             {/* Account Section */}
-            <section className="p-6 rounded-lg bg-[#191919] border border-[#212327]">
-              <h2 className="text-lg font-normal mb-4 text-white">Profile Information</h2>
-              <div className="space-y-4">
+            <section className="ws-panel p-6">
+              <MonoLabel index="01">Account</MonoLabel>
+              <h2 className="mb-6 mt-2 text-[19px] tracking-tight text-white">Profile Information</h2>
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-normal text-[#7d8187] mb-1">Display Name</label>
-                  <input 
-                    type="text" 
+                  <label className={cn(ui.mono, 'mb-2 block')}>Display Name</label>
+                  <input
+                    type="text"
                     defaultValue="User"
-                    className="w-full max-w-md px-3 py-2 bg-[#1a1c20] border border-[#212327] rounded-lg text-sm text-white focus:outline-none focus:border-[rgba(255,255,255,0.25)] font-normal transition-colors"
+                    className="ws-field h-10 w-full max-w-md px-3.5 text-[14px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-normal text-[#7d8187] mb-1">Email Address</label>
-                  <input 
-                    type="email" 
+                  <label className={cn(ui.mono, 'mb-2 block')}>Email Address</label>
+                  <input
+                    type="email"
                     defaultValue="user@example.com"
                     disabled
-                    className="w-full max-w-md px-3 py-2 bg-[#0a0a0a] border border-[#212327] rounded-lg text-sm text-[#7d8187] cursor-not-allowed font-normal"
+                    className="ws-field h-10 w-full max-w-md px-3.5 text-[14px]"
                   />
-                  <p className="xai-caption-mono-sm text-[#7d8187] mt-1" style={{ fontSize: '10px' }}>Your email is managed by your authentication provider.</p>
+                  <p className="mt-2 text-[12px] text-gray-600">Your email is managed by your authentication provider.</p>
                 </div>
               </div>
             </section>
 
             {/* Danger Zone */}
-            <section className="p-6 rounded-lg bg-[#191919] border border-[rgba(255,68,68,0.2)]">
-              <h2 className="text-lg font-normal mb-4 text-[#ff4444]">Danger Zone</h2>
-              <p className="text-sm text-[#7d8187] mb-4 font-normal">
-                Permanently delete your account and all associated data. This action cannot be undone.
-              </p>
-              <button className="px-4 py-2 rounded-full border border-[rgba(255,68,68,0.3)] text-[#ff4444] hover:bg-[rgba(255,68,68,0.1)] hover:border-[rgba(255,68,68,0.5)] text-sm font-normal transition-all">
-                Delete Account
-              </button>
+            <section className="rounded-2xl border border-red-400/15 bg-red-500/[0.03] p-6">
+              <div className="flex items-center gap-2.5 font-mono text-[10.5px] uppercase tracking-[0.16em] text-red-300/80">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                Danger Zone
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+                <p className="max-w-md text-[13.5px] leading-relaxed text-gray-400">
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <button className={ui.btnDanger}>
+                  Delete Account
+                </button>
+              </div>
             </section>
 
           </div>

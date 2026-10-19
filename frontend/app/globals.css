@@ -419,6 +419,237 @@
     white-space: nowrap;
   }
 
+  /* ─── Lab (marketing + auth) motion system ─── */
+  .lab-serif {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .lab-grid-bg {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  .lab-grid-fade {
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 100%);
+  }
+  .lab-text-gradient {
+    background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.55) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .lab-accent-gradient {
+    background: linear-gradient(90deg, #ffc285 0%, #ff7a17 45%, #c4b5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Scroll reveal (toggled by <Reveal>) */
+  .lab-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(6px);
+    transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.9s ease;
+  }
+  .lab-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  /* CSS-only entrance for above-the-fold content (no JS needed) */
+  @keyframes lab-enter {
+    from { opacity: 0; transform: translateY(20px); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+  .lab-enter {
+    animation: lab-enter 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes lab-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .lab-marquee {
+    animation: lab-marquee 40s linear infinite;
+  }
+
+  @keyframes lab-spin {
+    to { transform: rotate(360deg); }
+  }
+  .lab-spin-slow {
+    animation: lab-spin 60s linear infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .lab-spin-rev {
+    animation: lab-spin 90s linear infinite reverse;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  @keyframes lab-pulse-ring {
+    0% { transform: scale(0.8); opacity: 0.7; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  .lab-pulse-ring {
+    animation: lab-pulse-ring 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  @keyframes lab-dash {
+    to { stroke-dashoffset: -40; }
+  }
+  .lab-dash {
+    stroke-dasharray: 4 6;
+    animation: lab-dash 1.6s linear infinite;
+  }
+
+  @keyframes lab-beam {
+    0% { left: -20%; }
+    100% { left: 120%; }
+  }
+  .lab-beam {
+    animation: lab-beam 3.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+
+  @keyframes lab-progress {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  .lab-progress {
+    transform-origin: left;
+    animation: lab-progress linear forwards;
+  }
+
+  @keyframes lab-line-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  .lab-line-in {
+    animation: lab-line-in 0.45s ease-out both;
+  }
+
+  @keyframes lab-blink {
+    50% { opacity: 0; }
+  }
+  .lab-caret {
+    animation: lab-blink 1s step-end infinite;
+  }
+
+  @keyframes lab-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .lab-float {
+    animation: lab-float 6s ease-in-out infinite;
+  }
+
+  @keyframes lab-glow-shift {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, 0) scale(1); }
+    50% { opacity: 0.85; transform: translate(-50%, -10px) scale(1.06); }
+  }
+  .lab-aurora {
+    animation: lab-glow-shift 9s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lab-marquee, .lab-spin-slow, .lab-spin-rev, .lab-pulse-ring, .lab-dash,
+    .lab-beam, .lab-caret, .lab-float, .lab-aurora, .lab-line-in, .lab-enter {
+      animation: none !important;
+    }
+    .lab-reveal {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      transition: none;
+    }
+  }
+
+  /* ─── Workspace (in-app) layer — mirrors the Lab marketing system ─── */
+  .ws-field {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: #ffffff;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+  .ws-field::placeholder {
+    color: #5b5f66;
+  }
+  .ws-field:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  .ws-field:focus,
+  .ws-field:focus-within {
+    border-color: rgba(255, 122, 23, 0.45);
+    box-shadow: 0 0 0 3px rgba(255, 122, 23, 0.08);
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+  .ws-field:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .ws-field option {
+    background-color: #111113;
+  }
+  .ws-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+  }
+  .ws-range {
+    accent-color: #ff7a17;
+    height: 4px;
+    cursor: pointer;
+  }
+
+  /* Thin, quiet scrollbars across the app */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+
+  /* ReactFlow chrome, re-themed to the Lab palette */
+  .ws-flow .react-flow__controls {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  }
+  .ws-flow .react-flow__controls-button {
+    background: #111113;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    fill: #9ca3af;
+  }
+  .ws-flow .react-flow__controls-button:hover {
+    background: #1a1b1e;
+    fill: #ffffff;
+  }
+
   /* ReactFlow animated edge effects */
   .react-flow__edge.animated path {
     stroke-dasharray: 6;

@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: 'Comprehensive AI-powered research assistant and productivity tools',
   generator: 'v0.app',
   icons: {
-    icon: '/ProdSuite.png',
-    apple: '/ProdSuite.png',
+    icon: '/logo.svg',
+    apple: '/apple-icon.png',
   },
 }
 
@@ -29,6 +29,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased bg-[#0a0a0a] text-white">
         {children}

@@ -2,11 +2,11 @@ import { Handle, Position, NodeProps } from 'reactflow'
 import {
   Upload, Download, Cog, FileText, Database, Globe, Mail, Webhook,
   Brain, Sparkles, FileCheck, Zap, ArrowRightLeft,
-  Search, BarChart3, MessageSquare, X
+  Search, BarChart3, MessageSquare, Trash2, Check, Plus, Loader2
 } from 'lucide-react'
 import { ReactNode } from 'react'
 
-// ─── n8n-style node registry ───
+// ─── Node registry (icon + category colour) ───
 interface NodeMeta {
   icon: ReactNode
   accent: string       // border-left + icon bg tint
@@ -52,11 +52,28 @@ export interface WorkflowNodeData {
   type: 'input' | 'process' | 'output'
   status?: 'idle' | 'running' | 'success' | 'error'
   onRemove?: () => void
+  // Display-only extras computed by the page
+  step?: number
+  hint?: string
+  isLeaf?: boolean
 }
 
+export const CARD_W = 264
+
+// Solid, app-style fill derived from the category colour
+export function bubbleFill(accent: string) {
+  return `linear-gradient(150deg, color-mix(in srgb, ${accent} 72%, white) 0%, ${accent} 48%, color-mix(in srgb, ${accent} 62%, black) 100%)`
+}
+
+export function blockMeta(label: string, type: WorkflowNodeData['type']) {
+  return NODE_REGISTRY[label] || FALLBACK_META[type] || FALLBACK_META.process
+}
+
+// Zapier-style step card: app icon, "N. Kind", name, short description
 export default function WorkflowNode({ id, data, selected }: NodeProps<WorkflowNodeData>) {
-  const meta = NODE_REGISTRY[data.label] || FALLBACK_META[data.type] || FALLBACK_META.process
+  const meta = blockMeta(data.label, data.type)
   const status = data.status || 'idle'
+  const kind = data.type === 'input' ? 'Trigger' : data.type === 'output' ? 'Action' : meta.category
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -69,147 +86,99 @@ export default function WorkflowNode({ id, data, selected }: NodeProps<WorkflowN
   }
 
   const isRunning = status === 'running'
+  const isDone = status === 'success'
+  const isError = status === 'error'
+
+  const handleStyle: React.CSSProperties = {
+    width: 8,
+    height: 8,
+    background: '#0a0a0b',
+    border: '1.5px solid rgba(255,255,255,0.4)',
+    borderRadius: '50%',
+  }
 
   return (
-    <div
-      className="relative group transition-transform duration-200 hover:-translate-y-0.5"
-      style={{ minWidth: 210 }}
-    >
-      {/* Remove Cross Button — pops up on hover or focus */}
-      <button
-        type="button"
-        onClick={handleRemove}
-        className="absolute -top-2.5 -right-2.5 z-30 w-6 h-6 rounded-full bg-[#1e2024] border border-[#363a3f] flex items-center justify-center text-[#7d8187] hover:text-white hover:bg-rose-600 hover:border-rose-500 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-md transform group-hover:scale-105 active:scale-95 cursor-pointer"
-        title="Delete this node"
-        aria-label="Remove node"
-      >
-        <X className="w-3.5 h-3.5 stroke-[2.5]" />
-      </button>
-
-      {/* Target handle (top) */}
-      {data.type !== 'input' && (
-        <Handle
-          type="target"
-          position={Position.Top}
-          style={{
-            width: 10,
-            height: 10,
-            background: '#0a0a0a',
-            border: `2px solid ${meta.accent}`,
-            borderRadius: '50%',
-            top: -5,
-            transition: 'transform 0.2s, box-shadow 0.2s',
-          }}
-          className="hover:scale-125 hover:shadow-[0_0_8px_currentColor]"
-        />
-      )}
-
-      {/* Ambient animated glow for running / selected states */}
-      {isRunning && (
-        <div
-          className="absolute -inset-0.5 rounded-xl opacity-75 blur-sm animate-pulse pointer-events-none"
-          style={{ backgroundColor: meta.accent }}
-        />
-      )}
-
-      {/* Node body */}
+    <div className="group relative" style={{ width: CARD_W }}>
       <div
+        className="relative flex items-center gap-3 overflow-hidden rounded-2xl border bg-[#141518] p-3 pr-10 transition-all duration-200"
         style={{
-          borderLeft: `3px solid ${meta.accent}`,
+          borderColor: selected ? '#ff7a17' : isRunning ? `${meta.accent}aa` : isDone ? 'rgba(52,211,153,0.45)' : isError ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.09)',
           boxShadow: selected
-            ? `0 0 0 1px ${meta.accent}, 0 8px 28px rgba(0,0,0,0.6)`
+            ? '0 0 0 3px rgba(255,122,23,0.18), 0 16px 40px -18px rgba(0,0,0,0.9)'
             : isRunning
-            ? `0 0 16px ${meta.accent}40, 0 4px 20px rgba(0,0,0,0.5)`
-            : '0 2px 14px rgba(0,0,0,0.4)',
+              ? `0 0 0 3px ${meta.accent}22, 0 16px 40px -18px rgba(0,0,0,0.9)`
+              : '0 16px 40px -18px rgba(0,0,0,0.9)',
         }}
-        className={`
-          relative bg-[#191919] rounded-lg border border-[#212327]
-          transition-all duration-200 overflow-hidden
-          ${selected ? 'border-transparent ring-1 ring-white/20' : 'hover:border-[rgba(255,255,255,0.18)]'}
-        `}
       >
-        {/* Animated top shimmer beam for active nodes */}
-        {isRunning && (
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white to-transparent animate-pulse" />
-        )}
+        {isRunning && <span className="lab-beam pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />}
 
-        {/* Header row — icon + label + category */}
-        <div className="flex items-center gap-3 px-3.5 py-3">
-          {/* Icon badge */}
-          <div
-            className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105 ${
-              isRunning ? 'animate-bounce' : ''
-            }`}
-            style={{ backgroundColor: meta.accentBg, color: meta.accent }}
-          >
-            {meta.icon}
-          </div>
-
-          {/* Label + category */}
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] text-white font-medium truncate leading-tight tracking-tight">
-              {data.label}
-            </div>
-            <div
-              className="text-[10px] font-mono uppercase tracking-wider mt-0.5 font-medium"
-              style={{ color: meta.accent, opacity: 0.85 }}
-            >
-              {meta.category}
-            </div>
-          </div>
-
-          {/* Status dot / animated spinner */}
-          <div className="shrink-0 flex items-center justify-center">
-            {status === 'running' && (
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ffc285] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#ffc285]"></span>
-              </span>
-            )}
-            {status === 'success' && (
-              <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-            )}
-            {status === 'error' && (
-              <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
-            )}
-            {status === 'idle' && (
-              <div className="w-2 h-2 rounded-full bg-[#363a3f] group-hover:bg-[#4b5056] transition-colors" />
-            )}
-          </div>
-        </div>
-
-        {/* Bottom bar — metadata strip */}
-        <div
-          className="px-3.5 py-1.5 border-t border-[#212327]/60 flex items-center justify-between"
-          style={{ background: 'rgba(255,255,255,0.02)' }}
+        {/* App icon */}
+        <span
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[2]"
+          style={{ background: bubbleFill(meta.accent), boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 16px -6px ${meta.accent}99` }}
         >
-          <span className="text-[10px] font-mono text-[#7d8187] uppercase tracking-wider">
-            {data.type}
-          </span>
-          <div className="flex items-center gap-1">
-            <div className="w-1 h-1 rounded-full" style={{ backgroundColor: meta.accent, opacity: 0.6 }} />
-            <div className="w-1 h-1 rounded-full" style={{ backgroundColor: meta.accent, opacity: 0.35 }} />
-            <div className="w-1 h-1 rounded-full" style={{ backgroundColor: meta.accent, opacity: 0.15 }} />
-          </div>
+          {meta.icon}
+          {data.type === 'input' && (
+            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#141518] bg-[#111113]">
+              <Zap className="h-2 w-2 fill-[#ffc285] text-[#ffc285]" />
+            </span>
+          )}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[11px] font-medium text-gray-500">
+            {typeof data.step === 'number' && <span className="text-gray-400">{data.step}. </span>}
+            {kind}
+          </p>
+          <p className="truncate text-[14px] leading-tight tracking-tight text-white">{data.label}</p>
+          <p className="truncate text-[11.5px] text-gray-500">{isRunning ? 'Running…' : data.hint || 'Custom step'}</p>
         </div>
+
+        {/* Status / delete */}
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          {isRunning && <Loader2 className="h-4 w-4 animate-spin text-[#ffc285]" />}
+          {isDone && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400 text-black group-hover:hidden">
+              <Check className="h-3 w-3 stroke-[3]" />
+            </span>
+          )}
+          {isError && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-400 text-[11px] font-bold text-black group-hover:hidden">!</span>}
+          {!isRunning && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="nodrag hidden h-6 w-6 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-red-500/15 hover:text-red-300 group-hover:flex"
+              title="Delete this step"
+              aria-label="Remove node"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Handles: top in, bottom out */}
+        {data.type !== 'input' && <Handle type="target" position={Position.Top} style={{ ...handleStyle, top: -4 }} />}
+        {/* Every step can be followed by another, like Zapier actions */}
+        <Handle type="source" position={Position.Bottom} style={{ ...handleStyle, bottom: -4 }} />
       </div>
 
-      {/* Source handle (bottom) */}
-      {data.type !== 'output' && (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          style={{
-            width: 10,
-            height: 10,
-            background: '#0a0a0a',
-            border: `2px solid ${meta.accent}`,
-            borderRadius: '50%',
-            bottom: -5,
-            transition: 'transform 0.2s, box-shadow 0.2s',
-          }}
-          className="hover:scale-125 hover:shadow-[0_0_8px_currentColor]"
-        />
+      {/* "+" below the last step of a branch */}
+      {data.isLeaf && (
+        <div className="absolute left-1/2 top-full flex -translate-x-1/2 flex-col items-center">
+          <span className="h-5 w-px bg-white/20" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              window.dispatchEvent(new CustomEvent('workflow-node-add-next', { detail: { id } }))
+            }}
+            className="nodrag nopan flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-[#151619] text-gray-300 shadow-lg transition-all hover:scale-110 hover:border-[#ff7a17] hover:text-[#ffc285]"
+            title="Add a step"
+            aria-label="Add next step"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </button>
+        </div>
       )}
     </div>
   )

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import ChatInterface from '@/components/shared/chat-interface'
 import QuickActions from '@/components/shared/quick-actions'
 import FileUploadZone from '@/components/shared/file-upload-zone'
@@ -14,6 +14,7 @@ import {
   FileSpreadsheet, MessageSquare, Lightbulb, Map, UploadCloud, Square
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ModuleHeader, EmptyState, MonoLabel, ui } from '@/components/workspace/kit'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 // ---------------------------------------------------------------------------
@@ -63,7 +64,7 @@ interface FlashcardItem {
 // Main Page Component
 // ---------------------------------------------------------------------------
 
-export default function ResearchAssistantPage() {
+function ResearchAssistantContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const userId = 'demo-user'
@@ -418,64 +419,59 @@ export default function ResearchAssistantPage() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="flex-1 flex h-full bg-[#0a0a0a] overflow-hidden">
+    <div className="flex h-full flex-1 overflow-hidden bg-[#0a0a0a]">
       {/* Left: Chat area */}
-      <div className={cn('flex flex-col h-full transition-all', activePanel ? 'w-[55%]' : 'w-full')}>
-        {/* Header */}
-        <div className="border-b border-[#212327] px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="xai-caption-mono-sm text-[#7d8187] mb-1">Research</p>
-              <h1 className="xai-display-xs text-white">AI Research Assistant</h1>
-              <p className="text-sm text-[#7d8187] mt-1 font-normal">
-                RAG-powered document analysis · summary · notes · flashcards · mind maps
-              </p>
-            </div>
-            {sessionInfo?.has_data && (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[rgba(255,255,255,0.15)]">
-                  <Database className="w-3.5 h-3.5 text-white" />
-                  <span className="text-xs text-white font-normal">
-                    {sessionInfo.total_chunks} chunks · {sessionInfo.sources.length} source{sessionInfo.sources.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
+      <div className={cn('flex h-full min-w-0 flex-col transition-all', activePanel ? 'w-[55%]' : 'w-full')}>
+        <ModuleHeader
+          index="M.01"
+          section="Research"
+          title="AI Research"
+          accent="Assistant"
+          description="RAG-powered document analysis · summary · notes · flashcards · mind maps"
+          actions={
+            sessionInfo?.has_data && (
+              <>
+                <span className={ui.chip}>
+                  <Database className="h-3 w-3 text-[#ffc285]" />
+                  {sessionInfo.total_chunks} chunks · {sessionInfo.sources.length} source{sessionInfo.sources.length !== 1 ? 's' : ''}
+                </span>
                 <button
                   onClick={handleClearSession}
-                  className="p-1.5 text-[#7d8187] hover:text-[#ff4444] transition-colors rounded-full hover:bg-[rgba(255,68,68,0.1)]"
+                  className={cn(ui.iconBtn, 'hover:bg-red-500/10 hover:text-red-300')}
                   title="Clear all ingested data"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
-              </div>
-            )}
-          </div>
-        </div>
+              </>
+            )
+          }
+        />
 
         {/* Chat */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <ChatInterface messages={messages} streamingMessageId={streamingMessageId} />
+        <div className="relative flex flex-1 flex-col overflow-hidden">
+          {messages.length <= 1 && !isSending ? <ResearchIntro /> : <ChatInterface messages={messages} streamingMessageId={streamingMessageId} />}
 
           {/* Quick Actions Row */}
-          <div className="flex-shrink-0 pt-2 pb-0">
+          <div className="flex-shrink-0">
             <QuickActions onAction={handleQuickAction} />
           </div>
 
           {/* Input Area */}
-          <div className="bg-transparent p-4 pb-8 flex-shrink-0">
-            <div className="max-w-3xl mx-auto space-y-3">
+          <div className="flex-shrink-0 px-6 pb-6 pt-2">
+            <div className="mx-auto max-w-3xl space-y-3">
               {/* Tracked Files Upload Progress */}
               {trackedFiles.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-wrap gap-2">
                   {trackedFiles.map((tf, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-[#191919] border border-[#212327] rounded-full">
-                      <FileText className="w-3.5 h-3.5 text-[#7d8187]" />
-                      <span className="text-xs text-white max-w-[120px] truncate">{tf.file.name}</span>
+                    <div key={i} className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] py-1 pl-2.5 pr-3">
+                      <FileText className="h-3.5 w-3.5 text-[#a0c3ec]" />
+                      <span className="max-w-[140px] truncate text-[12px] text-gray-200">{tf.file.name}</span>
                       {tf.status === 'uploading' || tf.status === 'processing' ? (
-                        <Loader2 className="w-3 h-3 animate-spin text-[#ffc285]" />
+                        <Loader2 className="h-3 w-3 animate-spin text-[#ffc285]" />
                       ) : tf.status === 'indexed' ? (
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                       ) : (
-                        <span className="text-[10px] text-red-400 font-mono">error</span>
+                        <span className="font-mono text-[10px] uppercase text-red-300">error</span>
                       )}
                     </div>
                   ))}
@@ -484,9 +480,10 @@ export default function ResearchAssistantPage() {
 
               {/* Generating indicator */}
               {isGenerating && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#191919] border border-[#212327]">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#6366f1]" />
-                  <span className="text-xs text-[#7d8187] font-mono">Generating structured output…</span>
+                <div className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border border-[#ff7a17]/20 bg-[#ff7a17]/[0.05] px-3.5 py-2.5">
+                  <span className="lab-beam pointer-events-none absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-[#ff7a17]/15 to-transparent" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ffc285]" />
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#ffc285]">Generating structured output…</span>
                 </div>
               )}
 
@@ -509,7 +506,7 @@ export default function ResearchAssistantPage() {
 
       {/* Right: Structured output panel */}
       {activePanel && (
-        <div className="w-[45%] border-l border-[#212327] h-full overflow-hidden flex flex-col">
+        <div className="flex h-full w-[45%] flex-col overflow-hidden border-l border-white/[0.06] bg-[#070708]">
           {activePanel === 'mindmap' && mindmapTree && (
             <MindmapViewer tree={mindmapTree} onClose={() => setActivePanel(null)} />
           )}
@@ -531,6 +528,40 @@ export default function ResearchAssistantPage() {
 }
 
 // ---------------------------------------------------------------------------
+// ResearchIntro — first-run state before any conversation
+// ---------------------------------------------------------------------------
+function ResearchIntro() {
+  const steps = [
+    { n: '01', icon: UploadCloud, title: 'Ingest sources', body: 'PDFs, docs, images, YouTube transcripts or any web page — via the + button.' },
+    { n: '02', icon: MessageSquare, title: 'Ask anything', body: 'Answers are retrieved from your sources, not recalled from memory.' },
+    { n: '03', icon: Layers, title: 'Generate artefacts', body: 'Summaries, notes, flashcards, quizzes, citations and mind maps.' },
+  ]
+  return (
+    <div className="relative flex-1 overflow-y-auto">
+      <EmptyState
+        icon={Brain}
+        title="Welcome to Lumina."
+        accent="Your research bench."
+        body="Bring your material, then interrogate it. Every answer is grounded in the sources you've indexed for this session."
+      >
+        <div className="grid w-full max-w-2xl gap-px overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.06] text-left sm:grid-cols-3">
+          {steps.map(s => (
+            <div key={s.n} className="bg-[#0b0b0c] p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <s.icon className="h-4 w-4 text-[#ffc285]" strokeWidth={1.5} />
+                <span className="font-mono text-[10px] text-gray-600">{s.n}</span>
+              </div>
+              <p className="text-[13.5px] text-white">{s.title}</p>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </EmptyState>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // FlashcardsPanel — interactive flashcard viewer
 // ---------------------------------------------------------------------------
 function FlashcardsPanel({
@@ -546,68 +577,72 @@ function FlashcardsPanel({
 }) {
   const card = cards[currentIdx]
   const difficultyColor: Record<string, string> = {
-    easy: 'text-emerald-400',
-    medium: 'text-amber-400',
-    hard: 'text-red-400',
+    easy: 'text-emerald-300 border-emerald-400/25 bg-emerald-500/10',
+    medium: 'text-amber-300 border-amber-400/25 bg-amber-500/10',
+    hard: 'text-red-300 border-red-400/25 bg-red-500/10',
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0f0f0f]">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2024] bg-[#0a0a0a]">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-semibold text-white">Flashcards</span>
-          <span className="text-xs text-[#4a4a4a] font-mono">{currentIdx + 1} / {cards.length}</span>
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+        <div>
+          <MonoLabel index="◆">Study set</MonoLabel>
+          <p className="mt-1 text-[16px] tracking-tight text-white">
+            Flashcards <span className="lab-serif text-gray-400">· {cards.length} cards</span>
+          </p>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-full text-[#4a4a4a] hover:text-white hover:bg-[#1e2024] transition-colors">
-          <span className="text-xs font-mono">✕</span>
+        <button onClick={onClose} className={ui.iconBtn} aria-label="Close flashcards">
+          <X className="h-4 w-4" />
         </button>
       </div>
 
+      {/* Progress */}
+      <div className="h-px w-full bg-white/[0.06]">
+        <div className="h-px bg-gradient-to-r from-[#ffc285] to-[#ff7a17] transition-all duration-500" style={{ width: `${((currentIdx + 1) / cards.length) * 100}%` }} />
+      </div>
+
       {/* Card */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
-        <div className="w-full max-w-sm">
-          {/* Category + difficulty */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-mono text-[#4a4a4a] uppercase tracking-widest">{card.category}</span>
-            <span className={cn('text-[10px] font-mono uppercase', difficultyColor[card.difficulty] || 'text-[#4a4a4a]')}>
+      <div className="relative flex flex-1 flex-col items-center justify-center gap-6 p-6">
+        <div className="lab-grid-bg lab-grid-fade pointer-events-none absolute inset-0 opacity-40" />
+        <div className="relative w-full max-w-md">
+          <div className="mb-3 flex items-center justify-between">
+            <span className={ui.mono}>{card.category}</span>
+            <span className={cn('rounded-full border px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-wider', difficultyColor[card.difficulty] || 'border-white/10 text-gray-400')}>
               {card.difficulty}
             </span>
           </div>
 
-          {/* Flip card */}
           <button
             onClick={onFlip}
-            className="w-full min-h-[180px] p-6 rounded-2xl border border-[#212327] bg-[#141414] hover:border-[rgba(255,255,255,0.15)] transition-all text-left flex flex-col justify-center gap-3"
+            className={cn(
+              'group relative flex min-h-[220px] w-full flex-col justify-between overflow-hidden rounded-2xl border p-6 text-left transition-all duration-300',
+              flipped
+                ? 'border-[#ff7a17]/30 bg-gradient-to-br from-[#ff7a17]/[0.08] to-transparent shadow-[0_30px_80px_-30px_rgba(255,122,23,0.4)]'
+                : 'border-white/[0.08] bg-white/[0.03] hover:border-white/20'
+            )}
           >
-            <span className="text-[10px] font-mono text-[#4a4a4a] uppercase">{flipped ? 'Answer' : 'Question'}</span>
-            <p className="text-white text-sm leading-relaxed font-medium">
+            <span className={cn('font-mono text-[10.5px] uppercase tracking-[0.16em]', flipped ? 'text-[#ffc285]' : 'text-gray-500')}>
+              {flipped ? 'Answer' : 'Question'}
+            </span>
+            <p className={cn('my-4 leading-relaxed text-white', flipped ? 'text-[15px]' : 'text-[18px] tracking-tight')}>
               {flipped ? card.back : card.front}
             </p>
-            <span className="text-[10px] text-[#4a4a4a] font-mono mt-2">
-              {flipped ? 'Click to see question' : 'Click to reveal answer'}
+            <span className="font-mono text-[10px] uppercase tracking-wider text-gray-600 transition-colors group-hover:text-gray-400">
+              {flipped ? '↺ Click to see question' : '↻ Click to reveal answer'}
             </span>
           </button>
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center gap-4 mt-2">
-          <button
-            onClick={onPrev}
-            disabled={currentIdx === 0}
-            className="px-4 py-1.5 rounded-full text-xs font-mono border border-[#212327] text-[#7d8187] hover:text-white hover:border-[rgba(255,255,255,0.25)] disabled:opacity-30 transition-all"
-          >
+        <div className="relative flex items-center gap-4">
+          <button onClick={onPrev} disabled={currentIdx === 0} className={ui.btnOutline}>
             ← Prev
           </button>
-          <span className="text-xs text-[#4a4a4a] font-mono w-16 text-center">
+          <span className="w-16 text-center font-mono text-[12px] tabular-nums text-gray-400">
             {currentIdx + 1} / {cards.length}
           </span>
-          <button
-            onClick={onNext}
-            disabled={currentIdx === cards.length - 1}
-            className="px-4 py-1.5 rounded-full text-xs font-mono border border-[#212327] text-[#7d8187] hover:text-white hover:border-[rgba(255,255,255,0.25)] disabled:opacity-30 transition-all"
-          >
+          <button onClick={onNext} disabled={currentIdx === cards.length - 1} className={ui.btnOutline}>
             Next →
           </button>
         </div>
@@ -712,45 +747,39 @@ function ChatInput({
 
       {/* Dropdown Menu */}
       {menuOpen && (
-        <div className="absolute bottom-full left-0 mb-3 w-64 bg-[#1a1c20] border border-[#2a2d32] rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
-          <div className="p-1">
-            <div className="px-3 py-2 text-xs font-semibold text-[#7d8187] uppercase tracking-wider">Ingest Sources</div>
-            <button
-              type="button"
-              onClick={handleFileClick}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-[#2a2d32] rounded-lg transition-colors text-left"
-            >
-              <UploadCloud className="w-4 h-4 text-[#a855f7]" />
-              Upload Files / Images
-            </button>
-            <button
-              type="button"
-              onClick={() => { setInputMode('youtube'); setMenuOpen(false); setInput(''); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-[#2a2d32] rounded-lg transition-colors text-left"
-            >
-              <PlaySquare className="w-4 h-4 text-[#ff7a17]" />
-              Ingest YouTube URL
-            </button>
-            <button
-              type="button"
-              onClick={() => { setInputMode('web'); setMenuOpen(false); setInput(''); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-[#2a2d32] rounded-lg transition-colors text-left"
-            >
-              <Link2 className="w-4 h-4 text-[#06b6d4]" />
-              Ingest Web URL
-            </button>
+        <div className="absolute bottom-full left-0 z-50 mb-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-[#111113]/95 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
+          <div className="p-1.5">
+            <div className="px-2.5 pb-1.5 pt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-gray-500">Ingest sources</div>
+            {[
+              { onClick: handleFileClick, icon: <UploadCloud className="h-4 w-4 text-[#c4b5fd]" />, label: 'Upload files / images', hint: 'PDF · DOCX · TXT · PNG' },
+              { onClick: () => { setInputMode('youtube'); setMenuOpen(false); setInput(''); }, icon: <PlaySquare className="h-4 w-4 text-[#ff7a17]" />, label: 'YouTube URL', hint: 'Transcript' },
+              { onClick: () => { setInputMode('web'); setMenuOpen(false); setInput(''); }, icon: <Link2 className="h-4 w-4 text-[#a0c3ec]" />, label: 'Web page URL', hint: 'Article · docs' },
+            ].map(item => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={item.onClick}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-[13.5px] text-gray-200 transition-colors hover:bg-white/[0.06] hover:text-white"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">{item.icon}</span>
+                <span className="flex-1">
+                  {item.label}
+                  <span className="block font-mono text-[10px] uppercase tracking-wider text-gray-600">{item.hint}</span>
+                </span>
+              </button>
+            ))}
 
-            <div className="h-px bg-[#2a2d32] my-1 mx-2" />
-            <div className="px-3 py-2 text-xs font-semibold text-[#7d8187] uppercase tracking-wider">Quick Actions</div>
-            <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+            <div className="mx-2 my-1.5 h-px bg-white/[0.06]" />
+            <div className="px-2.5 pb-1.5 pt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-gray-500">Quick actions</div>
+            <div className="grid max-h-[220px] grid-cols-2 gap-0.5 overflow-y-auto">
               {actions.map(action => (
                 <button
                   key={action.id}
                   type="button"
                   onClick={() => { onAction(action.id); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-[#2a2d32] rounded-lg transition-colors text-left"
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-gray-300 transition-colors hover:bg-white/[0.06] hover:text-white"
                 >
-                  <span className="text-[#a1a1aa]">{action.icon}</span>
+                  <span className="text-gray-500">{action.icon}</span>
                   {action.label}
                 </button>
               ))}
@@ -762,26 +791,32 @@ function ChatInput({
       {/* Input Form */}
       <form
         onSubmit={handleSubmit}
-        className="relative flex items-center w-full bg-[#191919] border border-[#212327] rounded-3xl overflow-hidden focus-within:border-[rgba(255,255,255,0.25)] transition-all pl-2 pr-2 py-1"
+        className="ws-field relative flex w-full items-center gap-1 rounded-2xl p-1.5 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.9)]"
       >
         {/* Left Toggle / Mode Indicator */}
         {inputMode === 'chat' ? (
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 ml-1 rounded-full text-[#7d8187] hover:text-white hover:bg-[#2a2d32] transition-colors"
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-xl transition-all',
+              menuOpen ? 'rotate-45 bg-white/10 text-white' : 'text-gray-400 hover:bg-white/[0.06] hover:text-white'
+            )}
+            aria-label="Add sources or run an action"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="h-[18px] w-[18px]" />
           </button>
         ) : (
-          <div className="flex items-center gap-2 pl-3">
-            {inputMode === 'youtube' ? <PlaySquare className="w-5 h-5 text-[#ff7a17]" /> : <Link2 className="w-5 h-5 text-[#06b6d4]" />}
+          <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] py-1 pl-2.5 pr-1">
+            {inputMode === 'youtube' ? <PlaySquare className="h-3.5 w-3.5 text-[#ff7a17]" /> : <Link2 className="h-3.5 w-3.5 text-[#a0c3ec]" />}
+            <span className="font-mono text-[10px] uppercase tracking-wider text-gray-300">{inputMode === 'youtube' ? 'YouTube' : 'Web URL'}</span>
             <button
               type="button"
               onClick={() => { setInputMode('chat'); setInput(''); }}
-              className="p-1 rounded-full text-[#7d8187] hover:text-white hover:bg-[#2a2d32] transition-colors"
+              className="rounded-md p-1 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Cancel URL mode"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="h-3 w-3" />
             </button>
           </div>
         )}
@@ -795,37 +830,54 @@ function ChatInput({
               inputMode === 'web' ? "Paste any web page URL..." :
                 "Ask anything about your ingested content…"
           }
-          className="flex-1 bg-transparent text-white placeholder-[#7d8187] focus:outline-none px-3 py-2.5 text-[15px] font-normal min-h-[44px]"
+          className="min-h-[40px] flex-1 bg-transparent px-2 text-[14.5px] text-white placeholder-gray-600 focus:outline-none"
         />
 
-        <div className="flex items-center ml-2">
+        <div className="flex items-center gap-1">
           {/* Status Indicator for URL modes */}
           {(inputMode === 'youtube' && youtubeStatus === 'ingesting') || (inputMode === 'web' && webUrlStatus === 'ingesting') ? (
-            <Loader2 className="w-5 h-5 animate-spin text-[#7d8187] mr-2" />
+            <Loader2 className="mr-1 h-4 w-4 animate-spin text-[#ffc285]" />
           ) : null}
 
           {isSending ? (
             <button
               type="button"
               onClick={onStopStream}
-              className="p-2 rounded-full flex items-center justify-center transition-all bg-[#2a2d32] hover:bg-[#3a3d42] text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white transition-colors hover:bg-white/[0.12]"
+              aria-label="Stop generating"
             >
-              <Square className="w-4 h-4 fill-current" />
+              <Square className="h-3.5 w-3.5 fill-current" />
             </button>
           ) : (
             <button
               type="submit"
               disabled={!input.trim()}
               className={cn(
-                'p-2 rounded-full flex items-center justify-center transition-all',
-                input.trim() ? 'bg-white text-[#0a0a0a] hover:opacity-90' : 'bg-[#1a1c20] text-[#7d8187]'
+                'flex h-9 w-9 items-center justify-center rounded-xl transition-all',
+                input.trim() ? 'bg-white text-black shadow-[0_0_24px_-6px_rgba(255,194,133,0.7)] hover:bg-[#ffc285]' : 'bg-white/[0.04] text-gray-600'
               )}
+              aria-label="Send"
             >
-              <ArrowUp className="w-5 h-5" />
+              <ArrowUp className="h-[18px] w-[18px]" />
             </button>
           )}
         </div>
       </form>
+      <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-gray-600">
+        Enter to send · + to ingest sources or run an action
+      </p>
     </div>
+  )
+}
+
+export default function ResearchAssistantPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center bg-[#0a0a0a]">
+        <Loader2 className="h-5 w-5 animate-spin text-[#ffc285]" />
+      </div>
+    }>
+      <ResearchAssistantContent />
+    </Suspense>
   )
 }

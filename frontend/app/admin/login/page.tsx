@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
       <nav className="relative z-10 border-b border-red-500/20 bg-black/40 backdrop-blur-md px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src="/ProdSuite.png" alt="ProdSuite Logo" className="w-8 h-8 rounded shadow-lg border border-red-500/20 object-cover" />
+            <img src="/logo.svg" alt="ProdSuite Logo" className="w-8 h-8 rounded-lg shadow-lg" />
             <span className="text-lg font-medium tracking-wide">ProdSuite <span className="text-red-500 font-mono text-sm ml-2">ADMIN</span></span>
           </Link>
         </div>

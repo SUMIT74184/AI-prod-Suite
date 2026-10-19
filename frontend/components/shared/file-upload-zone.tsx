@@ -116,21 +116,21 @@ export default function FileUploadZone({
         )
       case 'indexed':
         return (
-          <span className="flex items-center gap-1 text-xs text-white">
+          <span className="flex items-center gap-1 text-xs text-emerald-300">
             <CheckCircle2 className="w-3 h-3" />
             Indexed ({tracked.chunkCount} chunks)
           </span>
         )
       case 'error':
         return (
-          <span className="flex items-center gap-1 text-xs text-[#ff4444]">
+          <span className="flex items-center gap-1 text-xs text-red-300">
             <AlertCircle className="w-3 h-3" />
             {tracked.error || 'Failed'}
           </span>
         )
       default:
         return (
-          <span className="text-xs text-[#7d8187]">
+          <span className="font-mono text-[10.5px] uppercase tracking-wider text-gray-500">
             Pending
           </span>
         )
@@ -141,7 +141,7 @@ export default function FileUploadZone({
   const displayFiles = trackedFiles.length > 0 ? trackedFiles : uploadedFiles.map(f => ({ file: f, status: 'pending' as FileStatus }))
 
   return (
-    <div className="px-4 py-2 bg-transparent space-y-3 relative z-10 max-w-3xl mx-auto w-full">
+    <div className="relative z-10 w-full space-y-3">
       {/* Upload Zone */}
       <div
         onDrop={handleDrop}
@@ -149,11 +149,10 @@ export default function FileUploadZone({
         onDragLeave={handleDragLeave}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'border border-dashed rounded-lg p-4 transition-all duration-200 cursor-pointer',
-          'flex flex-col items-center justify-center gap-2',
+          'group flex cursor-pointer items-center gap-4 rounded-xl border border-dashed px-4 py-3.5 transition-all duration-200',
           isDragging
-            ? 'border-white bg-[rgba(255,255,255,0.05)]'
-            : 'border-[#212327] hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(255,255,255,0.02)] text-[#7d8187] hover:text-white'
+            ? 'border-[#ff7a17]/60 bg-[#ff7a17]/[0.06]'
+            : 'border-white/[0.1] text-gray-500 hover:border-white/25 hover:bg-white/[0.02] hover:text-white'
         )}
       >
         <input
@@ -165,12 +164,17 @@ export default function FileUploadZone({
           className="hidden"
           aria-label="Upload files"
         />
-        <Upload className="w-5 h-5 mb-1 opacity-70" />
-        <div className="text-center">
-          <p className="text-sm font-normal text-inherit">
+        <span className={cn(
+          'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors',
+          isDragging ? 'border-[#ff7a17]/40 bg-[#ff7a17]/10 text-[#ffc285]' : 'border-white/[0.08] bg-white/[0.03] text-gray-400 group-hover:text-[#ffc285]'
+        )}>
+          <Upload className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 text-left">
+          <p className="text-[13.5px] text-gray-200">
             {isDragging ? 'Drop files here' : 'Drag and drop or click to upload'}
           </p>
-          <p className="xai-caption-mono-sm text-[#7d8187] mt-1.5">
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-gray-600">
             PDF, DOCX, TXT (MAX 50MB)
           </p>
         </div>
@@ -178,7 +182,8 @@ export default function FileUploadZone({
 
       {/* Error Message */}
       {error && (
-        <div className="text-sm text-[#ff4444] bg-[rgba(255,68,68,0.1)] px-3 py-2 rounded-lg border border-[rgba(255,68,68,0.2)]">
+        <div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-500/[0.08] px-3 py-2 text-[13px] text-red-300">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           {error}
         </div>
       )}
@@ -186,20 +191,20 @@ export default function FileUploadZone({
       {/* Uploaded Files List with Status */}
       {displayFiles.length > 0 && (
         <div className="space-y-2">
-          <p className="xai-caption-mono-sm text-[#7d8187]">
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-gray-500">
             Ingested Sources
           </p>
           <div className="space-y-1.5">
             {displayFiles.map((tracked, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2.5 bg-[#191919] border border-[#212327] rounded-lg"
+                className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] p-2.5"
               >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   {getFileIcon(tracked.file)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-normal text-white truncate">{tracked.file.name}</p>
-                    <p className="text-xs text-[#7d8187]">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] text-white">{tracked.file.name}</p>
+                    <p className="font-mono text-[10.5px] text-gray-600">
                       {(tracked.file.size / 1024).toFixed(2)} KB
                     </p>
                   </div>
