@@ -4,7 +4,7 @@ import { SiteNav, SiteFooter } from '@/components/marketing/site-chrome'
 import { AgentStage } from '@/components/marketing/agent-orchestra'
 import { ModuleShowcase } from '@/components/marketing/module-showcase'
 import { ReviewPipeline } from '@/components/marketing/review-pipeline'
-import { Reveal, CountUp, NetworkField } from '@/components/marketing/motion'
+import { Reveal, CountUp, NetworkField, Typewriter } from '@/components/marketing/motion'
 
 const STACK = ['LangGraph', 'LangChain', 'FastAPI', 'Google Gemini', 'OpenRouter', 'Anthropic', 'OpenAI', 'ChromaDB', 'Next.js', 'React Flow', 'DuckDuckGo Search', 'PyMuPDF']
 
@@ -45,8 +45,13 @@ export default function LandingPage() {
                 <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
+            <div className="lab-enter" style={{ animationDelay: '50ms' }}>
+              <p className="mt-8 select-none font-mono text-[44px] leading-none tracking-[0.12em] sm:text-6xl lg:text-[72px]">
+                <Typewriter text="PRODSUITE" startDelay={500} textClassName="lab-text-gradient" caretClassName="text-[#ff7a17]" />
+              </p>
+            </div>
             <div className="lab-enter" style={{ animationDelay: '100ms' }}>
-              <h1 className="mt-7 text-[44px] leading-[1.02] tracking-[-0.035em] sm:text-6xl lg:text-[76px]">
+              <h1 className="mt-6 text-[44px] leading-[1.02] tracking-[-0.035em] sm:text-6xl lg:text-[76px]">
                 <span className="lab-text-gradient">Research, done by a</span>
                 <br />
                 <span className="lab-serif lab-accent-gradient pr-2 text-[1.08em]">society of agents.</span>

@@ -88,6 +88,60 @@ export function CountUp({ to, suffix = '', duration = 1600 }: { to: number; suff
   )
 }
 
+// ─── Typewriter reveal (letter by letter, blinking caret) ───
+export function Typewriter({
+  text,
+  speed = 110,
+  startDelay = 300,
+  className,
+  textClassName,
+  caretClassName,
+}: {
+  text: string
+  speed?: number
+  startDelay?: number
+  className?: string
+  textClassName?: string
+  caretClassName?: string
+}) {
+  const [count, setCount] = useState(0)
+  const reduced = usePrefersReducedMotion()
+  useEffect(() => {
+    if (reduced) {
+      setCount(text.length)
+      return
+    }
+    setCount(0)
+    let interval: ReturnType<typeof setInterval> | undefined
+    const timeout = setTimeout(() => {
+      interval = setInterval(() => {
+        setCount(c => {
+          if (c + 1 >= text.length) clearInterval(interval)
+          return Math.min(text.length, c + 1)
+        })
+      }, speed)
+    }, startDelay)
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
+  }, [text, speed, startDelay, reduced])
+  return (
+    // The untyped remainder stays in flow but invisible, so the width never shifts while typing.
+    <span className={cn('inline-block whitespace-nowrap', className)} aria-label={text}>
+      <span className={textClassName} aria-hidden>
+        {text.slice(0, count)}
+      </span>
+      <span className={cn('lab-caret', caretClassName)} aria-hidden>
+        ▍
+      </span>
+      <span className="invisible" aria-hidden>
+        {text.slice(count)}
+      </span>
+    </span>
+  )
+}
+
 // ─── Canvas network field (drifting nodes + proximity links) ───
 export function NetworkField({ className, density = 0.00009 }: { className?: string; density?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
